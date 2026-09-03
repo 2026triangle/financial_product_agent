@@ -1,0 +1,274 @@
+# =============================================================================
+# bond_kr.ttl — 국내채권 온톨로지
+# 소스 테이블: tb_domestic_bond
+# 이 파일은 build_ttl_from_meta.py 가 db/meta_columns/*.json 으로부터 자동 생성한다.
+# 손으로 직접 편집하지 말 것 — 재생성 시 덮어써진다. 어휘/관계 정의는 common.ttl 참고.
+# =============================================================================
+@prefix fp:   <http://mafest.ai/product#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<> a owl:Ontology ;
+   owl:imports <./common.ttl> ;
+   rdfs:label "국내채권 온톨로지"@ko .
+
+# -----------------------------------------------------------------------------
+# tb_domestic_bond 전용 속성 (40개)
+# -----------------------------------------------------------------------------
+fp:pdNo a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:string ;
+    rdfs:label "상품단축코드 (채권단축코드/ISIN)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.pd_no" ;
+    rdfs:comment "채권의 고유 표준 식별코드(Primary Key)입니다. 각 발행 채권마다 유일하게 부여되는 12자리 표준코드(예: KR6000011D25, KR101501DA16)입니다."@ko .
+
+fp:pdExgMkt a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:string ;
+    rdfs:label "거래시장구분"@ko ;
+    fp:sourceColumn "tb_domestic_bond.pd_exg_mkt" ;
+    rdfs:comment "채권이 거래되는 시장의 구분으로 한국거래소에 상장되어 거래되는 장내(상장)와 증권사 간 장외에서 유통되는 장외(장외)로 나뉩니다."@ko .
+
+fp:pdNm a owl:DatatypeProperty ;
+    rdfs:domain fp:Product ; rdfs:range xsd:string ;
+    rdfs:label "상품명 (채권정식명칭)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.pd_nm|tb_domestic_etf.pd_nm|tb_foreign_etf.pd_nm" ;
+    rdfs:comment "발행기관, 표면금리, 만기년월 및 회차 정보가 모두 포함된 채권 공식 풀네임입니다."@ko .
+
+fp:pdAbrvNm a owl:DatatypeProperty ;
+    rdfs:domain fp:Product ; rdfs:range xsd:string ;
+    rdfs:label "상품약어명"@ko ;
+    fp:sourceColumn "tb_domestic_bond.pd_abrv_nm|tb_domestic_etf.pd_abrv_nm|tb_foreign_etf.pd_abrv_nm" ;
+    rdfs:comment "MTS 및 HTS 화면 표기 및 빠른 자연어 검색을 위해 축약된 단축 채권 상품명입니다."@ko .
+
+fp:pdEngNm a owl:DatatypeProperty ;
+    rdfs:domain fp:Product ; rdfs:range xsd:string ;
+    rdfs:label "상품영문명"@ko ;
+    fp:sourceColumn "tb_domestic_bond.pd_eng_nm|tb_domestic_etf.pd_eng_nm" ;
+    rdfs:comment "글로벌 표준 영문 채권 정식 명칭입니다."@ko .
+
+fp:pdAbrvEngNm a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:string ;
+    rdfs:label "상품약어영문명"@ko ;
+    fp:sourceColumn "tb_domestic_bond.pd_abrv_eng_nm" ;
+    rdfs:comment "글로벌 트레이딩 단말기 표기용 단축 영문 상품명입니다."@ko .
+
+fp:pdCtryCd a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:string ;
+    rdfs:label "발행국가코드"@ko ;
+    fp:sourceColumn "tb_domestic_bond.pd_ctry_cd" ;
+    rdfs:comment "채권이 발행된 국가의 2자리 ISO 국가 식별코드입니다 (KR: 대한민국, XS: 유로채권 등)."@ko .
+
+fp:pdPbcm a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:string ;
+    rdfs:label "발행기관명 (발행사)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.pd_pbcm" ;
+    rdfs:comment "채권을 발행하여 원리금 지급 의무를 지는 발행 주체 기관명(예: 대한민국정부, 한국전력공사, 신한카드, 한국산업은행)입니다."@ko .
+
+fp:stdPdMclsNm a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:string ;
+    rdfs:label "표준상품중분류명"@ko ;
+    fp:sourceColumn "tb_domestic_bond.std_pd_mcls_nm" ;
+    rdfs:comment "금융상품 최상위 자산군 표준 분류명으로 채권 자산군을 식별합니다."@ko .
+
+fp:stdPdSclsNm a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:string ;
+    rdfs:label "표준상품소분류명"@ko ;
+    fp:sourceColumn "tb_domestic_bond.std_pd_scls_nm" ;
+    rdfs:comment "채권의 법적 성격 및 발행 주체에 따른 표준 소분류(국채, 지방채, 특수채, 금융채, 회사채 등)입니다."@ko .
+
+fp:bdKnd a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:string ;
+    rdfs:label "채권종류 (세부종류)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.bd_knd" ;
+    rdfs:comment "채권의 51종 상세 세부 종류 분류(일반회사채, 카드채, 할부금융채, 은행채, 공사채, 국민주택1종, MBS 등)입니다."@ko .
+
+fp:currCd a owl:DatatypeProperty ;
+    rdfs:domain fp:Product ; rdfs:range xsd:string ;
+    rdfs:label "액면통화코드"@ko ;
+    fp:sourceColumn "tb_domestic_bond.curr_cd|tb_fund.curr_cd" ;
+    rdfs:comment "채권 액면가 및 이자/원금 상환에 사용되는 통화 단위(KRW, USD, EUR 등)입니다."@ko .
+
+fp:isuBalAmt a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "발행잔액"@ko ;
+    fp:sourceColumn "tb_domestic_bond.isu_bal_amt" ;
+    rdfs:comment "현재 시장에 유통 중인 채권의 총 미상환 잔액(원 단위)입니다. 유동성 규모를 가늠하는 지표입니다."@ko ;
+    fp:hasSynonym "발행 잔액이 1000억 이상인 대형 채권", "유동성 높은 잔액 큰 채권", "미상환 발행잔액이 가장 많은 채권", "발행잔액 1조원 이상 국채" .
+
+fp:isuDt a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:date ;
+    rdfs:label "발행일자"@ko ;
+    fp:sourceColumn "tb_domestic_bond.isu_dt" ;
+    rdfs:comment "채권이 최초로 발행된 일자(YYYY-MM-DD)입니다."@ko .
+
+fp:matDt a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:date ;
+    rdfs:label "만기일자 (원금상환일)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.mat_dt" ;
+    rdfs:comment "원금이 최종 상환되는 만기일자(YYYY-MM-DD)입니다. 만기가 없는 영구채는 9999-12-31로 표기됩니다."@ko .
+
+fp:srfcIrt a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "표면금리 (쿠폰율/이표금리)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.srfc_irt" ;
+    rdfs:comment "채권 액면가 대비 매년 정기적으로 지급되는 연간 표면 이자율(쿠폰율, %)입니다."@ko ;
+    fp:hasSynonym "표면이율 4% 이상 주는 채권 찾아줘", "쿠폰 금리 제일 높은 채권", "이표채 정기 이자 많이 주는 채권", "표면금리 5% 초과 고이율 채권", "무이표채(표면금리 0%) 채권" .
+
+fp:pdEvcoCrdGrd a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:string ;
+    rdfs:label "평가사신용등급"@ko ;
+    fp:sourceColumn "tb_domestic_bond.pd_evco_crd_grd" ;
+    rdfs:comment "국내 3대 신용평가사(한국신용평가, 한국기업평가, NICE신용평가)가 평가한 채권 신용등급 문자열입니다."@ko ;
+    fp:hasSynonym "신용평가사 3사 등급 확인해줘", "한신평 나신평 등급", "평가사 신용등급 문자열" .
+
+fp:pdRiskGcd a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:integer ;
+    rdfs:label "상품위험등급코드"@ko ;
+    fp:sourceColumn "tb_domestic_bond.pd_risk_gcd" ;
+    rdfs:comment "투자자 보호를 위해 금융기관이 산정한 채권 투자 위험등급(1: 매우높은위험/고위험 ~ 6: 매우낮은위험/초저위험)입니다."@ko ;
+    fp:hasSynonym "초저위험(6등급) 안전 채권 찾아줘", "위험등급 낮은 채권 목록", "1등급 고위험 고수익 채권", "원금 손실 위험 적은 저위험 채권", "위험등급 5등급 또는 6등급 채권" .
+
+fp:pdStdInfoUpdate a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:date ;
+    rdfs:label "기준정보갱신일자"@ko ;
+    fp:sourceColumn "tb_domestic_bond.pd_std_info_update" ;
+    rdfs:comment "민평사 가격 및 위험 지표가 최종 산출/갱신된 기준일자(YYYY-MM-DD)입니다."@ko .
+
+fp:buyYield a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "당사매수수익률 (실시간 매수금리)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.buy_yield" ;
+    rdfs:comment "미래에셋증권 영업점 및 MTS/HTS에서 리테일 고객이 즉시 매수할 수 있는 실시간 매수 연환산 수익률(%)입니다 (매수가능 881건에만 존재)."@ko ;
+    fp:hasSynonym "지금 바로 살 수 있는 수익률 높은 채권 알려줘", "미래에셋에서 매수 가능한 채권 금리", "매수수익률 4% 이상 채권 추천해줘", "수익률 제일 높은 채권 순서대로 보여줘", "지금 사면 연 몇 프로 수익 나와?", "실시간 매수 가능한 고수익 채권" .
+
+fp:corpPretaxYield a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "법인세전수익률"@ko ;
+    fp:sourceColumn "tb_domestic_bond.corp_pretax_yield" ;
+    rdfs:comment "법인 고객이 채권 매수 시 적용되는 세전 연환산 매매 수익률(%)입니다."@ko ;
+    fp:hasSynonym "법인 고객 세전 수익률 얼마야?", "법인 매수 금리 확인" .
+
+fp:corpAfterTaxYield a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "법인세후수익률"@ko ;
+    fp:sourceColumn "tb_domestic_bond.corp_after_tax_yield" ;
+    rdfs:comment "법인세율을 반영한 후 법인 고객이 실질적으로 수취하는 연환산 세후 수익률(%)입니다."@ko ;
+    fp:hasSynonym "법인 세후 실질 수익률 알려줘", "법인세 차감 후 금리" .
+
+fp:afterTaxYield a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "개인세후수익률 (실질 세후금리)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.after_tax_yield" ;
+    rdfs:comment "개인 투자자 일반 이자소득세(15.4%) 원천징수 후 실제로 수령하게 되는 연환산 세후 수익률(%)입니다."@ko ;
+    fp:hasSynonym "세금 15.4% 떼고 실제로 내 손에 들어오는 금리 얼마야?", "개인 세후 수익률 제일 높은 채권", "실질 세후 이자율 3.5% 이상 채권", "이자소득세 뺀 실수령 금리" .
+
+fp:prefTaxYield a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "세금우대수익률 (ISA/저율과세 금리)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.pref_tax_yield" ;
+    rdfs:comment "세금우대(9.5% 저율과세, ISA 계좌 비과세/분리과세 등) 적용 시 수취하는 연환산 세후 수익률(%)입니다."@ko ;
+    fp:hasSynonym "세금우대 적용했을 때 금리 얼마야?", "ISA 계좌에서 살 때 절세 수익률", "저율과세 9.5% 적용 시 세후 금리" .
+
+fp:avgAnnualTaxYield a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "연평균세후수익률"@ko ;
+    fp:sourceColumn "tb_domestic_bond.avg_annual_tax_yield" ;
+    rdfs:comment "채권을 만기까지 보유했을 때 연평균으로 환산된 실질 세후 수익률(%)입니다."@ko ;
+    fp:hasSynonym "만기까지 보유 시 연평균 세후 수익률", "연평균 실질 금리" .
+
+fp:depoEquivYield154 a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "은행예금환산수익률 (예금비교금리)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.depo_equiv_yield_154" ;
+    rdfs:comment "시중은행 15.4% 과세 정기예금에 가입했을 때 동일한 세후 수익을 달성하기 위한 은행 정기예금 환산 이자율(%)입니다."@ko ;
+    fp:hasSynonym "은행 정기예금으로 치면 연 몇 %짜리야?", "시중은행 예금 금리와 비교했을 때 환산 수익률", "은행 정기예금 4%보다 수익 좋은 채권", "예금 환산 이자율 제일 높은 채권" .
+
+fp:buyableQuantity a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "매수가능수량 (잔여수량)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.buyable_quantity" ;
+    rdfs:comment "미래에셋증권 리테일 잔고 기준으로 고객이 즉시 매수 주문을 넣을 수 있는 실시간 잔여 수량(원/좌 단위)입니다."@ko .
+
+fp:remainingDays a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:integer ;
+    rdfs:label "잔여일수 (잔존일수)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.remaining_days" ;
+    rdfs:comment "기준일로부터 원금 만기 상환일까지 남아있는 총 잔존일수(일 단위)입니다."@ko .
+
+fp:dur a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "듀레이션 (수정듀레이션/금리민감도)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.dur" ;
+    rdfs:comment "시장금리가 1%p(100bp) 변동할 때 채권 가격의 변동률 민감도를 나타내는 수정 듀레이션(년 단위)입니다."@ko .
+
+fp:cov a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "볼록성 (Convexity)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.cov" ;
+    rdfs:comment "금리 변동에 따른 듀레이션의 2차 도함수로, 채권 가격-수익률 곡선의 볼록한 곡률 정도를 나타내는 지표입니다."@ko .
+
+fp:ndyDur a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "익일듀레이션"@ko ;
+    fp:sourceColumn "tb_domestic_bond.ndy_dur" ;
+    rdfs:comment "다음 영업일 결제 기준 예상 수정 듀레이션(년 단위)입니다."@ko .
+
+fp:ndyCov a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "익일볼록성"@ko ;
+    fp:sourceColumn "tb_domestic_bond.ndy_cov" ;
+    rdfs:comment "다음 영업일 결제 기준 예상 볼록성 수치입니다."@ko .
+
+fp:evalPrice a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "당일평가단가 (민평단가/채권가격)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.eval_price" ;
+    rdfs:comment "민간채권평가 3사가 평가한 채권 액면 10,000원당 평균 평가 가격(원 단위)입니다."@ko .
+
+fp:appliedYield a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "당일적용수익률 (민평금리/유통수익률)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.applied_yield" ;
+    rdfs:comment "민간채권평가사들이 당일 채권 평가단가를 산출하는 데 적용한 기준 민평 유통수익률(%)입니다."@ko ;
+    fp:hasSynonym "민평 금리 몇 %야?", "시장 평균 유통수익률 알려줘", "채권 평가 기준 민평 수익률" .
+
+fp:dirty a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "당일더티프라이스 (경과이자포함 결제단가)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.dirty" ;
+    rdfs:comment "채권 순수 가격(클린프라이스)에 지난 이자지급일 이후 누적된 경과이자(Accrued Interest)를 합산한 실제 매수 결제 가격(원)입니다."@ko ;
+    fp:hasSynonym "경과이자 포함된 실제 결제 가격(더티프라이스) 얼마야?", "매수할 때 최종 결제 단가 알려줘" .
+
+fp:ndyEvalPrice a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "익일평가단가"@ko ;
+    fp:sourceColumn "tb_domestic_bond.ndy_eval_price" ;
+    rdfs:comment "다음 영업일 기준으로 예상되는 민평사 평균 평가단가(원)입니다."@ko .
+
+fp:ndyAppliedYield a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "익일적용수익률"@ko ;
+    fp:sourceColumn "tb_domestic_bond.ndy_applied_yield" ;
+    rdfs:comment "다음 영업일 기준으로 예상되는 민평사 적용 수익률(%)입니다."@ko ;
+    fp:hasSynonym "내일 예상 적용 수익률" .
+
+fp:ndyDirty a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:decimal ;
+    rdfs:label "익일더티프라이스"@ko ;
+    fp:sourceColumn "tb_domestic_bond.ndy_dirty" ;
+    rdfs:comment "다음 영업일 결제 기준 예상 더티프라이스(원)입니다."@ko ;
+    fp:hasSynonym "익일 예상 결제 기준 더티프라이스" .
+
+fp:crdGrd a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:string ;
+    rdfs:label "대표신용등급 (신용도/안전도)"@ko ;
+    fp:sourceColumn "tb_domestic_bond.crd_grd" ;
+    rdfs:comment "국채/지방채 면제 종목을 제외하고 신용평가 3사의 평가를 종합한 표준 대표 신용등급(AAA, AA+, AA0, AA-, A+, BBB- 등)입니다. 채권의 원금 상환 안전성과 부도 위험을 나타내는 핵심 지표입니다."@ko ;
+    fp:hasSynonym "신용도 높은 안전한 채권 찾아줘", "위험등급 낮은 안전한 채권", "부도 위험 적은 우량 채권 목록", "신용등급 AA 이상 우량 회사채 찾아줘", "AAA 등급 최고 안전 채권", "투자적격 등급 채권 목록", "신용평가 우수한 채권 추천해줘", "신용등급 A- 이상 채권" .
+
+fp:crdGrdDt a owl:DatatypeProperty ;
+    rdfs:domain fp:Bond ; rdfs:range xsd:date ;
+    rdfs:label "신용등급평가일자"@ko ;
+    fp:sourceColumn "tb_domestic_bond.crd_grd_dt" ;
+    rdfs:comment "해당 대표 신용등급이 최종 공시 및 평가된 일자(YYYY-MM-DD)입니다."@ko .

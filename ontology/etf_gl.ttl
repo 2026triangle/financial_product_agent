@@ -1,0 +1,148 @@
+# =============================================================================
+# etf_gl.ttl — 해외ETF 온톨로지
+# 소스 테이블: tb_foreign_etf
+# 이 파일은 build_ttl_from_meta.py 가 db/meta_columns/*.json 으로부터 자동 생성한다.
+# 손으로 직접 편집하지 말 것 — 재생성 시 덮어써진다. 어휘/관계 정의는 common.ttl 참고.
+# =============================================================================
+@prefix fp:   <http://mafest.ai/product#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<> a owl:Ontology ;
+   owl:imports <./common.ttl> ;
+   rdfs:label "해외ETF 온톨로지"@ko .
+
+# -----------------------------------------------------------------------------
+# 다른 도메인 파일과 공유되어 여기서는 재선언하지 않는 속성 (중복 정의 방지)
+# 실제 정의는 아래 목록의 소유 파일을 참고할 것 — 이 그래프에는 owl:imports 체인이
+# 아니라 rdflib가 5개 파일을 함께 로드할 때만 완전해진다(완료 조건의 결합 그래프 검증 참고).
+# -----------------------------------------------------------------------------
+#   fp:pdNm  (정의: bond_kr.ttl, 공유 테이블: tb_domestic_bond, tb_domestic_etf, tb_foreign_etf)
+#   fp:pdAbrvNm  (정의: bond_kr.ttl, 공유 테이블: tb_domestic_bond, tb_domestic_etf, tb_foreign_etf)
+#   fp:pdItmNo  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:pdItmNoMa  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:cuFundMgmtCo  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:cuBaseIndex  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:cuChargeRt  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:cuStrtegy  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:cuUptDt  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:pdLstgDt  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:pdSaleYn  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:pdTrYn  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:pdCurrCd  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:pdExgMktCd  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:pdGrpNo  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:pdMktId  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:wuCoreYn  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:wuInvAstType  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:wuInvRgn  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:wuUptDt  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:pdLstPrice  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:pdLstStkCnt  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:duClpr  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:duBpr  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:duHpr  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:duLpr  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:duDiffRt  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:duLastNav  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:duLastAum  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:duEr1d  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:duEr1y  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:duVol1d  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:duVal1d  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+#   fp:duUptDt  (정의: etf_kr.ttl, 공유 테이블: tb_domestic_etf, tb_foreign_etf)
+
+# -----------------------------------------------------------------------------
+# tb_foreign_etf 전용 속성 (15개)
+# -----------------------------------------------------------------------------
+fp:pdIsinCd a owl:DatatypeProperty ;
+    rdfs:domain fp:ForeignETF ; rdfs:range xsd:string ;
+    rdfs:label "국제표준종목코드 (ISIN)"@ko ;
+    fp:sourceColumn "tb_foreign_etf.pd_isin_cd" ;
+    rdfs:comment "해외 ETF의 12자리 국제 표준 ISIN 식별코드(예: US78462F1030)입니다."@ko .
+
+fp:pdUsCik a owl:DatatypeProperty ;
+    rdfs:domain fp:ForeignETF ; rdfs:range xsd:string ;
+    rdfs:label "미국 SEC CIK 번호"@ko ;
+    fp:sourceColumn "tb_foreign_etf.pd_us_cik" ;
+    rdfs:comment "미국 증권거래위원회(SEC) EDGAR 전자공시 시스템에 등록된 10자리 중앙식별키(CIK, 예: 0001350487)입니다."@ko .
+
+fp:pdLipperId a owl:DatatypeProperty ;
+    rdfs:domain fp:ForeignETF ; rdfs:range xsd:string ;
+    rdfs:label "Refinitiv Lipper ID"@ko ;
+    fp:sourceColumn "tb_foreign_etf.pd_lipper_id" ;
+    rdfs:comment "글로벌 펀드평가사 Refinitiv Lipper의 고유 펀드 식별코드(예: 40113961)입니다."@ko .
+
+fp:pdTrdCcy a owl:DatatypeProperty ;
+    rdfs:domain fp:ForeignETF ; rdfs:range xsd:string ;
+    rdfs:label "거래 통화"@ko ;
+    fp:sourceColumn "tb_foreign_etf.pd_trd_ccy" ;
+    rdfs:comment "실제 체결 거래에 적용되는 통화 코드입니다."@ko .
+
+fp:cuEtnYn a owl:DatatypeProperty ;
+    rdfs:domain fp:ForeignETF ; rdfs:range xsd:string ;
+    rdfs:label "ETN 여부"@ko ;
+    fp:sourceColumn "tb_foreign_etf.cu_etn_yn" ;
+    rdfs:comment "상장지수증권(ETN) 여부(Y: ETN, NaN/N: ETF)입니다."@ko .
+
+fp:cuInverseShortYn a owl:DatatypeProperty ;
+    rdfs:domain fp:ForeignETF ; rdfs:range xsd:string ;
+    rdfs:label "인버스/숏 전략 여부"@ko ;
+    fp:sourceColumn "tb_foreign_etf.cu_inverse_short_yn" ;
+    rdfs:comment "지수 하락 시 수익이 발생하는 인버스/베어/숏 전략 상품 여부(Y: 인버스, NaN: 정방향)입니다."@ko .
+
+fp:cuIndexTrackingYn a owl:DatatypeProperty ;
+    rdfs:domain fp:ForeignETF ; rdfs:range xsd:string ;
+    rdfs:label "지수추종여부 (패시브/액티브)"@ko ;
+    fp:sourceColumn "tb_foreign_etf.cu_index_tracking_yn" ;
+    rdfs:comment "기초지수를 엄격히 복제하는 패시브 인덱스 펀드 여부(Y: 패시브, NaN: 액티브/전략형)입니다."@ko .
+
+fp:cuIndexReplMthd a owl:DatatypeProperty ;
+    rdfs:domain fp:ForeignETF ; rdfs:range xsd:string ;
+    rdfs:label "지수복제방식 (Full/Optimized/Swap)"@ko ;
+    fp:sourceColumn "tb_foreign_etf.cu_index_repl_mthd" ;
+    rdfs:comment "기초지수를 복제하는 운용 기법(Full: 완전복제, Optimized: 최적화 표본추출, Swap: 합성 스왑 등)입니다."@ko .
+
+fp:ruMktPrice a owl:DatatypeProperty ;
+    rdfs:domain fp:ForeignETF ; rdfs:range xsd:decimal ;
+    rdfs:label "실시간 시장가격 (미국 현재가)"@ko ;
+    fp:sourceColumn "tb_foreign_etf.ru_mkt_price" ;
+    rdfs:comment "해외 거래소 실시간 장중 체결 가격(달러)입니다."@ko .
+
+fp:ruMktVolume a owl:DatatypeProperty ;
+    rdfs:domain fp:ForeignETF ; rdfs:range xsd:decimal ;
+    rdfs:label "실시간 시장거래량"@ko ;
+    fp:sourceColumn "tb_foreign_etf.ru_mkt_volume" ;
+    rdfs:comment "실시간 장중 거래량(주)입니다."@ko .
+
+fp:duOpr a owl:DatatypeProperty ;
+    rdfs:domain fp:ForeignETF ; rdfs:range xsd:decimal ;
+    rdfs:label "시가 (장 시작가)"@ko ;
+    fp:sourceColumn "tb_foreign_etf.du_opr" ;
+    rdfs:comment "당일 장 시작 체결 시가(달러)입니다."@ko .
+
+fp:duClprBaseDt a owl:DatatypeProperty ;
+    rdfs:domain fp:ForeignETF ; rdfs:range xsd:date ;
+    rdfs:label "종가 산출 기준일자"@ko ;
+    fp:sourceColumn "tb_foreign_etf.du_clpr_base_dt" ;
+    rdfs:comment "종가가 체결된 기준일자(YYYY-MM-DD)입니다."@ko .
+
+fp:duClprSrc a owl:DatatypeProperty ;
+    rdfs:domain fp:ForeignETF ; rdfs:range xsd:string ;
+    rdfs:label "종가 소스"@ko ;
+    fp:sourceColumn "tb_foreign_etf.du_clpr_src" ;
+    rdfs:comment "종가 데이터 제공 출처입니다."@ko .
+
+fp:duNavBaseDt a owl:DatatypeProperty ;
+    rdfs:domain fp:ForeignETF ; rdfs:range xsd:date ;
+    rdfs:label "NAV 산출 기준일자"@ko ;
+    fp:sourceColumn "tb_foreign_etf.du_nav_base_dt" ;
+    rdfs:comment "NAV가 산출된 기준일자(YYYY-MM-DD)입니다."@ko .
+
+fp:duBaseDtMatchYn a owl:DatatypeProperty ;
+    rdfs:domain fp:ForeignETF ; rdfs:range xsd:string ;
+    rdfs:label "기준일자 일치여부"@ko ;
+    fp:sourceColumn "tb_foreign_etf.du_base_dt_match_yn" ;
+    rdfs:comment "종가 산출일자와 NAV 산출일자가 일치하는지 여부(Y/N)입니다."@ko .

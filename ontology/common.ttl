@@ -1,0 +1,730 @@
+# =============================================================================
+# common.ttl — 금융상품 공통 온톨로지 (TBox)
+# 대회 제출 규격: @prefix fp: <http://mafest.ai/product#>
+# bond_kr.ttl / etf_kr.ttl / etf_gl.ttl / fund_pub.ttl 이 owl:imports 로 참조
+#
+# 설계 원칙
+#  L1 개념 : 클래스 계층 · 관계 · 속성
+#  L2 어휘 : 허용값 인스턴스 + fp:rank(순서) + fp:hasSynonym(상품군별 표기)
+#  L3 매핑 : fp:sourceTable / fp:sourceColumn — 런타임 검증·SQL 라우팅·그래프 생성의 재료
+#
+# 모든 어휘값은 perprocessed_datas/v4 실측 기준 (ontology/vocab/*.json)
+# =============================================================================
+@prefix fp:   <http://mafest.ai/product#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+<> a owl:Ontology ;
+   rdfs:label "금융상품 공통 온톨로지"@ko ;
+   rdfs:comment "국내채권/국내ETF/해외ETF/공모펀드 4개 도메인의 상위 클래스, 참조 엔티티, 통제 어휘 정의. 데이터 기준일 2026-07-11"@ko .
+
+# =============================================================================
+# 0. 애노테이션 프로퍼티 — 온톨로지를 '실행 가능'하게 만드는 층
+# =============================================================================
+fp:sourceTable   a owl:AnnotationProperty ; rdfs:label "소스 테이블"@ko .
+fp:sourceColumn  a owl:AnnotationProperty ; rdfs:label "소스 컬럼"@ko .
+fp:sourceFilter  a owl:AnnotationProperty ; rdfs:label "소스 필터"@ko ;
+    rdfs:comment "같은 테이블 안에서 클래스를 가르는 SQL 조건 (예: ETF/ETN 구분)"@ko .
+fp:primaryKey    a owl:AnnotationProperty ; rdfs:label "기본키"@ko .
+fp:graphLabel    a owl:AnnotationProperty ; rdfs:label "Neo4j 노드 라벨"@ko .
+fp:hasSynonym    a owl:AnnotationProperty ; rdfs:label "동의어/구어체/상품군별 표기"@ko .
+fp:valueCode     a owl:AnnotationProperty ; rdfs:label "원천 코드값"@ko ;
+    rdfs:comment "상품군마다 표기가 달라 복수 지정. 형식: '<테이블>:<원천값>'"@ko .
+fp:rank          a owl:AnnotationProperty ; rdfs:label "서열"@ko ;
+    rdfs:comment "부등호 질의('AA- 이상','위험등급 낮은')를 결정론적으로 변환하기 위한 순위. 작을수록 상위"@ko .
+fp:notAvailableIn a owl:AnnotationProperty ; rdfs:label "미제공 상품군"@ko ;
+    rdfs:comment "해당 개념이 존재하지 않는 상품군. '확인할 수 없음' 응답 및 역질문 판단 근거"@ko .
+fp:categoryLevel a owl:AnnotationProperty ; rdfs:label "분류 계층 레벨"@ko ;
+    rdfs:comment "'major'|'mid'|'minor'. fp:BondCategory처럼 트리가 아닌 DAG 통제어휘에서 같은 레벨끼리만 비교·전개하기 위한 값"@ko .
+
+# =============================================================================
+# 1. 클래스 계층
+# =============================================================================
+fp:Product a owl:Class ;
+    rdfs:label "금융상품"@ko ;
+    fp:graphLabel "Product" .
+
+fp:Bond a owl:Class ;
+    rdfs:subClassOf fp:Product ;
+    rdfs:label "국내채권"@ko ;
+    fp:sourceTable "tb_domestic_bond" ; fp:primaryKey "pd_no" ; fp:graphLabel "Bond" .
+
+# ETF/ETN은 같은 마스터에 섞여 있음 (국내 1,734건 중 ETN 532건 / 해외 5,646건 중 ETN 59건)
+# pd_grp_no 로 구분하며, "ETF 알려줘" 질의에 ETN을 섞지 않기 위해 클래스를 분리한다.
+fp:ETF a owl:Class ;
+    rdfs:subClassOf fp:Product ;
+    rdfs:label "상장지수펀드(ETF)"@ko ;
+    fp:sourceFilter "pd_grp_no = 'ETF'" ; fp:graphLabel "ETF" .
+
+fp:ETN a owl:Class ;
+    rdfs:subClassOf fp:Product ;
+    rdfs:label "상장지수증권(ETN)"@ko ;
+    rdfs:comment "ETF와 형제 클래스. 발행사 신용위험을 지는 별개 상품이므로 ETF 질의에 포함하지 않는다"@ko ;
+    fp:sourceFilter "pd_grp_no = 'ETN'" ; fp:graphLabel "ETN" .
+
+fp:DomesticETF a owl:Class ;
+    rdfs:subClassOf fp:ETF ; rdfs:label "국내 ETF"@ko ;
+    fp:sourceTable "tb_domestic_etf" ; fp:primaryKey "pd_itm_no" ; fp:graphLabel "DomesticETF" .
+
+fp:ForeignETF a owl:Class ;
+    rdfs:subClassOf fp:ETF ; rdfs:label "해외 ETF"@ko ;
+    fp:sourceTable "tb_foreign_etf" ; fp:primaryKey "pd_itm_no" ; fp:graphLabel "ForeignETF" .
+
+fp:Fund a owl:Class ;
+    rdfs:subClassOf fp:Product ; rdfs:label "공모펀드"@ko ;
+    fp:sourceTable "tb_fund" ; fp:primaryKey "itm_no" ; fp:graphLabel "Fund" .
+
+# =============================================================================
+# 2. 참조 엔티티 클래스
+# =============================================================================
+fp:Institution a owl:Class ; rdfs:label "기관(발행기관/운용사)"@ko ; fp:graphLabel "Institution" ;
+    rdfs:comment "채권 발행기관(pd_pbcm) 또는 ETF/펀드 운용사(cu_fund_mgmt_co). 역할은 관계로 구분하며, 표기 정규화(Entity Resolution) 대상"@ko .
+fp:BenchmarkIndex a owl:Class ; rdfs:label "기초지수/벤치마크"@ko ; fp:graphLabel "BenchmarkIndex" .
+fp:RiskGrade   a owl:Class ; rdfs:label "위험등급"@ko ; fp:graphLabel "RiskGrade" .
+fp:CreditRating a owl:Class ; rdfs:label "신용등급"@ko ; fp:graphLabel "CreditRating" .
+fp:AssetClass  a owl:Class ; rdfs:label "투자자산군"@ko ; fp:graphLabel "AssetClass" .
+fp:Region      a owl:Class ; rdfs:label "투자지역"@ko ; fp:graphLabel "Region" .
+fp:BondCategory a owl:Class ; rdfs:label "채권분류"@ko ; fp:graphLabel "BondCategory" ;
+    rdfs:comment "대분류(std_pd_mcls_nm 6종) > 중분류(std_pd_scls_nm 16종) > 소분류(bd_knd 39종) 3계층"@ko .
+fp:AttributeTag a owl:Class ; rdfs:label "펀드속성태그"@ko ; fp:graphLabel "AttributeTag" ;
+    fp:sourceTable "tb_fund_attribute" .
+
+# =============================================================================
+# 3. 객체 속성(관계) — 그래프의 엣지
+# =============================================================================
+fp:issuedBy a owl:ObjectProperty ; rdfs:domain fp:Bond ; rdfs:range fp:Institution ;
+    rdfs:label "발행기관"@ko ; fp:sourceColumn "tb_domestic_bond.pd_pbcm" ; fp:graphLabel "ISSUED_BY" .
+fp:managedBy a owl:ObjectProperty ; rdfs:domain fp:Product ; rdfs:range fp:Institution ;
+    rdfs:label "운용사"@ko ; fp:sourceColumn "cu_fund_mgmt_co" ; fp:graphLabel "MANAGED_BY" .
+fp:tracksIndex a owl:ObjectProperty ; rdfs:domain fp:Product ; rdfs:range fp:BenchmarkIndex ;
+    rdfs:label "추종/벤치마크 지수"@ko ; fp:graphLabel "TRACKS" .
+fp:hasRiskGrade a owl:ObjectProperty ; rdfs:domain fp:Product ; rdfs:range fp:RiskGrade ;
+    rdfs:label "위험등급"@ko ; fp:graphLabel "HAS_RISK_GRADE" ;
+    fp:notAvailableIn "tb_foreign_etf" .
+fp:hasCreditRating a owl:ObjectProperty ; rdfs:domain fp:Bond ; rdfs:range fp:CreditRating ;
+    rdfs:label "신용등급"@ko ; fp:sourceColumn "tb_domestic_bond.crd_grd" ; fp:graphLabel "HAS_CREDIT_RATING" ;
+    rdfs:comment "채권 전용. 42,394건 중 24,750건만 보유(58%)"@ko .
+fp:investsInAssetClass a owl:ObjectProperty ; rdfs:domain fp:Product ; rdfs:range fp:AssetClass ;
+    rdfs:label "투자자산군"@ko ; fp:graphLabel "INVESTS_IN_ASSET_CLASS" .
+fp:investsInRegion a owl:ObjectProperty ; rdfs:domain fp:Product ; rdfs:range fp:Region ;
+    rdfs:label "투자지역"@ko ; fp:graphLabel "INVESTS_IN_REGION" .
+fp:hasBondCategory a owl:ObjectProperty ; rdfs:domain fp:Bond ; rdfs:range fp:BondCategory ;
+    rdfs:label "채권분류"@ko ; fp:graphLabel "HAS_BOND_CATEGORY" .
+fp:parentCategory a owl:ObjectProperty ; rdfs:domain fp:BondCategory ; rdfs:range fp:BondCategory ;
+    rdfs:label "상위 분류"@ko ; fp:graphLabel "PARENT_CATEGORY" ;
+    rdfs:comment "채권분류 3계층은 트리가 아니라 DAG라 다중값 허용(예: 일반사채의 상위는 회사채·특수채 둘 다). rdfs:subClassOf는 쓰지 않는다 — 클래스 서브섬션(도메인 검사)과 인스턴스 계층을 섞으면 OntologyValidator._ancestors()가 오염된다"@ko .
+fp:hasAttribute a owl:ObjectProperty ; rdfs:domain fp:Fund ; rdfs:range fp:AttributeTag ;
+    rdfs:label "펀드속성"@ko ; fp:graphLabel "HAS_ATTRIBUTE" .
+
+# =============================================================================
+# 4. 공통 데이터 속성
+# =============================================================================
+fp:productCode a owl:DatatypeProperty ; rdfs:domain fp:Product ; rdfs:range xsd:string ;
+    rdfs:label "상품표준코드"@ko ; fp:sourceColumn "pd_no|pd_itm_no|itm_no" .
+fp:productName a owl:DatatypeProperty ; rdfs:domain fp:Product ; rdfs:range xsd:string ;
+    rdfs:label "상품명"@ko .
+fp:productNameAbbr a owl:DatatypeProperty ; rdfs:domain fp:Product ; rdfs:range xsd:string ;
+    rdfs:label "상품약어명"@ko .
+fp:asOfDate a owl:DatatypeProperty ; rdfs:domain fp:Product ; rdfs:range xsd:date ;
+    rdfs:label "데이터 기준일"@ko ; rdfs:comment "제공 스냅샷 고정값 2026-07-11"@ko .
+fp:currency a owl:DatatypeProperty ; rdfs:domain fp:Product ; rdfs:range xsd:string ;
+    rdfs:label "거래통화"@ko ; fp:sourceColumn "curr_cd|pd_curr_cd" ;
+    fp:hasSynonym "원화", "달러", "환노출" .
+fp:isSellable a owl:DatatypeProperty ; rdfs:domain fp:Product ; rdfs:range xsd:boolean ;
+    rdfs:label "판매가능여부"@ko ;
+    rdfs:comment """상품군마다 판정 근거가 다르다.
+      ETF/ETN : pd_sale_yn = 'Y'
+      공모펀드 : sale_yn = '판매중'  (당사판매는 thco_sale_yn 별도)
+      국내채권 : 판매여부 컬럼이 없음 → buyable_quantity > 0 으로 판정한다"""@ko ;
+    fp:sourceColumn "pd_sale_yn|sale_yn|tb_domestic_bond.buyable_quantity" .
+
+# =============================================================================
+# 5-A. 통제 어휘 — 위험등급 (실측: 1등급이 가장 위험, 6등급이 가장 안전)
+#      ※ 이전 초안은 방향이 반대로 정의되어 있었음. v4 실측값으로 정정.
+#      해외ETF에는 위험등급 컬럼 자체가 없다.
+# =============================================================================
+fp:RiskGrade1 a fp:RiskGrade ; rdfs:label "1등급 매우높은위험"@ko ; fp:rank 1 ;
+    fp:valueCode "tb_domestic_bond:1", "tb_domestic_etf:PD_RISK_GCD_11", "tb_fund:1.0" ;
+    fp:hasSynonym "매우높은위험", "매우 높은 위험", "초고위험" .
+fp:RiskGrade2 a fp:RiskGrade ; rdfs:label "2등급 높은위험"@ko ; fp:rank 2 ;
+    fp:valueCode "tb_domestic_bond:2", "tb_domestic_etf:PD_RISK_GCD_12", "tb_fund:2.0" ;
+    fp:hasSynonym "높은위험", "높은 위험" .
+fp:RiskGrade3 a fp:RiskGrade ; rdfs:label "3등급 다소높은위험"@ko ; fp:rank 3 ;
+    fp:valueCode "tb_domestic_bond:3", "tb_domestic_etf:PD_RISK_GCD_13", "tb_fund:3.0" ;
+    fp:hasSynonym "다소높은위험", "다소 높은 위험" .
+fp:RiskGrade4 a fp:RiskGrade ; rdfs:label "4등급 보통위험"@ko ; fp:rank 4 ;
+    fp:valueCode "tb_domestic_bond:4", "tb_domestic_etf:PD_RISK_GCD_14", "tb_fund:4.0" ;
+    fp:hasSynonym "보통위험", "보통 위험", "중위험" .
+fp:RiskGrade5 a fp:RiskGrade ; rdfs:label "5등급 낮은위험"@ko ; fp:rank 5 ;
+    fp:valueCode "tb_domestic_bond:5", "tb_domestic_etf:PD_RISK_GCD_15", "tb_fund:5.0" ;
+    fp:hasSynonym "낮은위험", "낮은 위험", "저위험", "안전한" .
+fp:RiskGrade6 a fp:RiskGrade ; rdfs:label "6등급 매우낮은위험"@ko ; fp:rank 6 ;
+    fp:valueCode "tb_domestic_bond:6", "tb_domestic_etf:PD_RISK_GCD_16", "tb_fund:6.0" ;
+    fp:hasSynonym "매우낮은위험", "매우 낮은 위험", "가장 안전한" .
+fp:RiskGradeUnknown a fp:RiskGrade ; rdfs:label "미분류"@ko ;
+    fp:valueCode "tb_domestic_bond:0" ;
+    rdfs:comment "국내채권 58건. 등급 비교 질의에서 제외한다"@ko .
+
+# =============================================================================
+# 5-B. 통제 어휘 — 신용등급 (국내채권 전용, 실측 20종)
+#      crd_grd 는 'AA0' 형태, pd_evco_crd_grd 는 'AA' 형태 → hasSynonym 으로 연결
+#      "AA- 이상" = rank <= 4   /   투자등급 = rank <= 10 (BBB- 이상)
+# =============================================================================
+fp:CreditRating_AAA  a fp:CreditRating ; rdfs:label "AAA"  ; fp:rank  1 .
+fp:CreditRating_AAp  a fp:CreditRating ; rdfs:label "AA+"  ; fp:rank  2 .
+fp:CreditRating_AA   a fp:CreditRating ; rdfs:label "AA0"  ; fp:rank  3 ; fp:hasSynonym "AA" .
+fp:CreditRating_AAm  a fp:CreditRating ; rdfs:label "AA-"  ; fp:rank  4 .
+fp:CreditRating_Ap   a fp:CreditRating ; rdfs:label "A+"   ; fp:rank  5 .
+fp:CreditRating_A    a fp:CreditRating ; rdfs:label "A0"   ; fp:rank  6 ; fp:hasSynonym "A" .
+fp:CreditRating_Am   a fp:CreditRating ; rdfs:label "A-"   ; fp:rank  7 .
+fp:CreditRating_BBBp a fp:CreditRating ; rdfs:label "BBB+" ; fp:rank  8 .
+fp:CreditRating_BBB  a fp:CreditRating ; rdfs:label "BBB0" ; fp:rank  9 ; fp:hasSynonym "BBB" .
+fp:CreditRating_BBBm a fp:CreditRating ; rdfs:label "BBB-" ; fp:rank 10 ;
+    rdfs:comment "투자등급(Investment Grade) 하한"@ko .
+fp:CreditRating_BBp  a fp:CreditRating ; rdfs:label "BB+"  ; fp:rank 11 .
+fp:CreditRating_BB   a fp:CreditRating ; rdfs:label "BB0"  ; fp:rank 12 ; fp:hasSynonym "BB" .
+fp:CreditRating_BBm  a fp:CreditRating ; rdfs:label "BB-"  ; fp:rank 13 .
+fp:CreditRating_Bp   a fp:CreditRating ; rdfs:label "B+"   ; fp:rank 14 .
+fp:CreditRating_B    a fp:CreditRating ; rdfs:label "B0"   ; fp:rank 15 ; fp:hasSynonym "B" .
+fp:CreditRating_Bm   a fp:CreditRating ; rdfs:label "B-"   ; fp:rank 16 .
+fp:CreditRating_CCC  a fp:CreditRating ; rdfs:label "CCC"  ; fp:rank 17 .
+fp:CreditRating_CC   a fp:CreditRating ; rdfs:label "CC0"  ; fp:rank 18 ; fp:hasSynonym "CC" .
+fp:CreditRating_C    a fp:CreditRating ; rdfs:label "C0"   ; fp:rank 19 ; fp:hasSynonym "C" .
+
+# =============================================================================
+# 5-C. 통제 어휘 — 투자자산군 (3개 상품군의 표기가 전부 다름)
+#      국내ETF wu_inv_ast_type(한글 8) / 해외ETF wu_inv_ast_type(영문 6) / 펀드 or_attr_desc(11)
+# =============================================================================
+fp:AssetClass_Equity a fp:AssetClass ; rdfs:label "주식"@ko ;
+    fp:valueCode "tb_domestic_etf:주식", "tb_foreign_etf:Equity", "tb_fund:주식형" ;
+    fp:hasSynonym "주식형", "Equity", "주식에 투자하는" .
+fp:AssetClass_Bond a fp:AssetClass ; rdfs:label "채권"@ko ;
+    fp:valueCode "tb_domestic_etf:채권", "tb_foreign_etf:Bond", "tb_fund:채권형" ;
+    fp:hasSynonym "채권형", "Bond", "Fixed Income" .
+fp:AssetClass_Commodity a fp:AssetClass ; rdfs:label "원자재"@ko ;
+    fp:valueCode "tb_domestic_etf:원자재", "tb_foreign_etf:Commodity" ;
+    fp:hasSynonym "Commodity", "금", "원유" ; fp:notAvailableIn "tb_fund" .
+fp:AssetClass_Mixed a fp:AssetClass ; rdfs:label "혼합자산"@ko ;
+    fp:valueCode "tb_domestic_etf:혼합자산", "tb_foreign_etf:Mixed Assets", "tb_fund:혼합자산" ;
+    fp:hasSynonym "Mixed Assets", "자산배분" .
+fp:AssetClass_MixedEquity a fp:AssetClass ; rdfs:subClassOf fp:AssetClass_Mixed ;
+    rdfs:label "주식혼합"@ko ; fp:valueCode "tb_fund:주식혼합" .
+fp:AssetClass_MixedBond a fp:AssetClass ; rdfs:subClassOf fp:AssetClass_Mixed ;
+    rdfs:label "채권혼합"@ko ; fp:valueCode "tb_fund:채권혼합" .
+fp:AssetClass_MoneyMarket a fp:AssetClass ; rdfs:label "단기자금"@ko ;
+    fp:valueCode "tb_domestic_etf:단기자금", "tb_foreign_etf:Money Market", "tb_fund:MMF" ;
+    fp:hasSynonym "MMF", "Money Market", "머니마켓", "단기금융" .
+fp:AssetClass_Currency a fp:AssetClass ; rdfs:label "통화"@ko ;
+    fp:valueCode "tb_domestic_etf:통화" ; fp:hasSynonym "환율", "달러선물" ;
+    fp:notAvailableIn "tb_foreign_etf", "tb_fund" .
+fp:AssetClass_RealEstate a fp:AssetClass ; rdfs:label "부동산"@ko ;
+    fp:valueCode "tb_domestic_etf:부동산", "tb_fund:임대형" ; fp:hasSynonym "리츠", "REITs" .
+fp:AssetClass_Alternatives a fp:AssetClass ; rdfs:label "대안투자"@ko ;
+    fp:valueCode "tb_foreign_etf:Alternatives", "tb_fund:특별자산" ;
+    fp:hasSynonym "Alternatives", "대체투자", "특별자산" ;
+    rdfs:comment "해외ETF 1,800건(32%). 국내ETF의 통화/부동산/기타와 1:1 대응하지 않아 별도 표준값으로 둔다"@ko .
+fp:AssetClass_FundOfFunds a fp:AssetClass ; rdfs:label "재간접"@ko ;
+    fp:valueCode "tb_fund:재간접" ; fp:hasSynonym "펀드오브펀즈", "FoF" ;
+    fp:notAvailableIn "tb_domestic_etf", "tb_foreign_etf" .
+fp:AssetClass_Loan a fp:AssetClass ; rdfs:label "대출형"@ko ; fp:valueCode "tb_fund:대출형" .
+fp:AssetClass_Other a fp:AssetClass ; rdfs:label "기타"@ko ; fp:valueCode "tb_domestic_etf:기타" .
+
+# =============================================================================
+# 5-D. 통제 어휘 — 투자지역
+#      국내ETF wu_inv_rgn(한글 11) / 해외ETF wu_inv_rgn(영문 59) / 펀드 fd_ivst_rgn_desc(7)
+#      ※ 펀드는 국가 단위가 없고 대륙 단위뿐 → 국가 지정 질의는 역질문 대상
+# =============================================================================
+fp:Region_Korea a fp:Region ; rdfs:label "국내"@ko ;
+    fp:valueCode "tb_domestic_etf:국내", "tb_foreign_etf:Korea", "tb_fund:국내" ;
+    fp:hasSynonym "한국", "Korea", "국내 증시" .
+fp:Region_US a fp:Region ; rdfs:label "미국"@ko ;
+    fp:valueCode "tb_domestic_etf:미국", "tb_foreign_etf:United States of America" ;
+    fp:hasSynonym "United States of America", "미국 증시", "US", "S&P" ;
+    fp:notAvailableIn "tb_fund" ;
+    rdfs:comment "공모펀드는 '남미/북미' 대륙 단위까지만 제공 → 미국 단독 필터 불가"@ko .
+fp:Region_Global a fp:Region ; rdfs:label "글로벌"@ko ;
+    fp:valueCode "tb_domestic_etf:글로벌", "tb_foreign_etf:Global", "tb_fund:글로벌" ;
+    fp:hasSynonym "Global", "전세계" .
+fp:Region_GlobalExUS a fp:Region ; rdfs:subClassOf fp:Region_Global ; rdfs:label "미국제외 글로벌"@ko ;
+    fp:valueCode "tb_foreign_etf:Global Ex US" .
+fp:Region_Emerging a fp:Region ; rdfs:label "이머징/브릭스"@ko ;
+    fp:valueCode "tb_domestic_etf:이머징/브릭스", "tb_foreign_etf:Global Emerging Markets", "tb_fund:이머징/브릭스",
+                 "tb_foreign_etf:BRIC", "tb_foreign_etf:Turkey" ;
+    fp:hasSynonym "신흥국", "Emerging Markets", "BRICS" ;
+    rdfs:comment "BRIC·Turkey는 대륙이 아닌 MSCI 신흥국(EM) 분류 기준으로 편입(터키는 지리적으로 유럽/중동 접경이나 지수 분류상 EM)"@ko .
+fp:Region_China a fp:Region ; rdfs:label "중국"@ko ;
+    fp:valueCode "tb_domestic_etf:중국", "tb_foreign_etf:China", "tb_foreign_etf:Greater China",
+                 "tb_foreign_etf:Hong Kong", "tb_foreign_etf:Taiwan" ;
+    fp:hasSynonym "China", "중화권" ; fp:notAvailableIn "tb_fund" .
+fp:Region_Japan a fp:Region ; rdfs:label "일본"@ko ;
+    fp:valueCode "tb_domestic_etf:일본", "tb_foreign_etf:Japan" ;
+    fp:hasSynonym "Japan" ; fp:notAvailableIn "tb_fund" .
+fp:Region_India a fp:Region ; rdfs:label "인도"@ko ;
+    fp:valueCode "tb_domestic_etf:인도", "tb_foreign_etf:India" ;
+    fp:hasSynonym "India" ; fp:notAvailableIn "tb_fund" .
+fp:Region_Vietnam a fp:Region ; rdfs:label "베트남"@ko ;
+    fp:valueCode "tb_domestic_etf:베트남", "tb_foreign_etf:Vietnam" ;
+    fp:hasSynonym "Vietnam" ; fp:notAvailableIn "tb_fund" .
+fp:Region_Asia a fp:Region ; rdfs:label "아시아"@ko ;
+    fp:valueCode "tb_domestic_etf:아시아", "tb_foreign_etf:Asia Pacific", "tb_foreign_etf:Asia Pacific ex Japan", "tb_fund:아시아",
+                 "tb_foreign_etf:Australia", "tb_foreign_etf:New Zealand", "tb_foreign_etf:Indonesia",
+                 "tb_foreign_etf:Malaysia", "tb_foreign_etf:Philippines", "tb_foreign_etf:Singapore",
+                 "tb_foreign_etf:Thailand", "tb_foreign_etf:ASEAN" ;
+    fp:hasSynonym "Asia Pacific", "아태" .
+fp:Region_Europe a fp:Region ; rdfs:label "유럽"@ko ;
+    fp:valueCode "tb_domestic_etf:유럽", "tb_foreign_etf:Europe", "tb_foreign_etf:EuroZone", "tb_fund:유럽",
+                 "tb_foreign_etf:United Kingdom", "tb_foreign_etf:Germany", "tb_foreign_etf:Switzerland",
+                 "tb_foreign_etf:France", "tb_foreign_etf:Italy", "tb_foreign_etf:Spain", "tb_foreign_etf:Netherlands",
+                 "tb_foreign_etf:Sweden", "tb_foreign_etf:Norway", "tb_foreign_etf:Denmark", "tb_foreign_etf:Finland",
+                 "tb_foreign_etf:Austria", "tb_foreign_etf:Belgium", "tb_foreign_etf:Ireland", "tb_foreign_etf:Poland",
+                 "tb_foreign_etf:Greece", "tb_foreign_etf:Iceland" ;
+    fp:hasSynonym "Europe", "유로존" .
+fp:Region_Americas a fp:Region ; rdfs:label "남미/북미"@ko ;
+    fp:valueCode "tb_domestic_etf:남미/북미", "tb_foreign_etf:Latin America", "tb_foreign_etf:Brazil", "tb_foreign_etf:Canada", "tb_foreign_etf:Mexico", "tb_fund:남미/북미",
+                 "tb_foreign_etf:North America", "tb_foreign_etf:Argentina", "tb_foreign_etf:Chile",
+                 "tb_foreign_etf:Colombia", "tb_foreign_etf:Peru" ;
+    fp:hasSynonym "Latin America", "중남미", "북미" .
+fp:Region_MiddleEastAfrica a fp:Region ; rdfs:label "중동/아프리카"@ko ;
+    fp:valueCode "tb_foreign_etf:Israel", "tb_fund:중동/아프리카",
+                 "tb_foreign_etf:Saudi Arabia", "tb_foreign_etf:Qatar", "tb_foreign_etf:Kuwait",
+                 "tb_foreign_etf:United Arab Emirates", "tb_foreign_etf:South Africa", "tb_foreign_etf:Africa" ;
+    fp:notAvailableIn "tb_domestic_etf" .
+
+# 해외ETF wu_inv_rgn 59종(공백 제외) 전량 매핑 완료(2026-09-04, 총 5,646건 중 미매핑 0건).
+# 국가 단위 롱테일 40종은 국가 자체를 새 Region 인스턴스로 만들지 않고, 위 대륙/블록 단위
+# Region_* 의 fp:valueCode 에 편입했다 — 기존 13개 Region 인스턴스 체계를 그대로 유지하기 위함.
+# 분류 근거: 지리적 대륙(예: Germany→Europe) 우선, 예외 2건은 지수 분류(MSCI EM) 기준—
+# BRIC/Turkey → Region_Emerging. 특히 Turkey는 지리적으로 유럽 접경이나 EM 지수 편입 관례를 따름.
+# 근거 데이터: db/finance_master.db tb_foreign_etf.wu_inv_rgn (SELECT DISTINCT, 2026-09-04 재검증).
+
+# =============================================================================
+# 5-E. 통제 어휘 — 채권분류 (tb_domestic_bond 3계층, 트리 아님 — DAG)
+#      대분류(std_pd_mcls_nm 6) > 중분류(std_pd_scls_nm 16) > 소분류(bd_knd 39) = 61개
+#      다부모 노드 있음(중분류 3건, 소분류 10건) — 원천 데이터의 사실이므로 트리로 '고치지' 않는다.
+#      레벨 간 동명이인 2건(특수은행채: 중분류/소분류, 개인투자용국채: 대분류/소분류) 존재 →
+#      URI에 레벨 접두어(BondCatM/BondCatS/BondCatK) 필수.
+#      추출: extract_bond_category.py --ttl (원본 JSON: vocab/bond_category_hierarchy.json)
+# =============================================================================
+fp:BondCatM_Hoesachae a fp:BondCategory ;
+    rdfs:label "회사채"@ko ;
+    fp:categoryLevel "major" ;
+    fp:sourceColumn "std_pd_mcls_nm" ;
+    fp:valueCode "tb_domestic_bond:회사채" .
+
+fp:BondCatM_Teuksuchae a fp:BondCategory ;
+    rdfs:label "특수채"@ko ;
+    fp:categoryLevel "major" ;
+    fp:sourceColumn "std_pd_mcls_nm" ;
+    fp:valueCode "tb_domestic_bond:특수채" .
+
+fp:BondCatM_Gukgongchae a fp:BondCategory ;
+    rdfs:label "국공채"@ko ;
+    fp:categoryLevel "major" ;
+    fp:sourceColumn "std_pd_mcls_nm" ;
+    fp:valueCode "tb_domestic_bond:국공채" .
+
+fp:BondCatM_Gaeintujayonggukchae a fp:BondCategory ;
+    rdfs:label "개인투자용국채"@ko ;
+    fp:categoryLevel "major" ;
+    fp:sourceColumn "std_pd_mcls_nm" ;
+    fp:valueCode "tb_domestic_bond:개인투자용국채" .
+
+fp:BondCatM_Oehwachaegwonhoesachae a fp:BondCategory ;
+    rdfs:label "외화채권-회사채"@ko ;
+    fp:categoryLevel "major" ;
+    fp:sourceColumn "std_pd_mcls_nm" ;
+    fp:valueCode "tb_domestic_bond:외화채권-회사채" .
+
+fp:BondCatM_Oehwachaegwongeumyungchae a fp:BondCategory ;
+    rdfs:label "외화채권-금융채"@ko ;
+    fp:categoryLevel "major" ;
+    fp:sourceColumn "std_pd_mcls_nm" ;
+    fp:valueCode "tb_domestic_bond:외화채권-금융채" .
+
+fp:BondCatS_Ilbansachae a fp:BondCategory ;
+    rdfs:label "일반사채"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:일반사채" ;
+    fp:parentCategory fp:BondCatM_Teuksuchae, fp:BondCatM_Hoesachae .
+
+fp:BondCatS_Gongsachae a fp:BondCategory ;
+    rdfs:label "공사채"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:공사채" ;
+    fp:parentCategory fp:BondCatM_Teuksuchae, fp:BondCatM_Hoesachae .
+
+fp:BondCatS_Teuksueunhaengchae a fp:BondCategory ;
+    rdfs:label "특수은행채"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:특수은행채" ;
+    fp:parentCategory fp:BondCatM_Teuksuchae, fp:BondCatM_Hoesachae .
+
+fp:BondCatS_Jiyeokgaebal a fp:BondCategory ;
+    rdfs:label "지역개발"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:지역개발" ;
+    fp:parentCategory fp:BondCatM_Gukgongchae .
+
+fp:BondCatS_Eunhaengchae a fp:BondCategory ;
+    rdfs:label "은행채"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:은행채" ;
+    fp:parentCategory fp:BondCatM_Hoesachae .
+
+fp:BondCatS_Gukgochae a fp:BondCategory ;
+    rdfs:label "국고채"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:국고채" ;
+    fp:parentCategory fp:BondCatM_Gukgongchae .
+
+fp:BondCatS_Dosicheoldo a fp:BondCategory ;
+    rdfs:label "도시철도"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:도시철도" ;
+    fp:parentCategory fp:BondCatM_Gukgongchae .
+
+fp:BondCatS_Gukminjutaek a fp:BondCategory ;
+    rdfs:label "국민주택"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:국민주택" ;
+    fp:parentCategory fp:BondCatM_Gukgongchae .
+
+fp:BondCatS_Gongmojibangchae a fp:BondCategory ;
+    rdfs:label "공모지방채"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:공모지방채" ;
+    fp:parentCategory fp:BondCatM_Gukgongchae .
+
+fp:BondCatS_Jungangeunhaengchae a fp:BondCategory ;
+    rdfs:label "중앙은행채"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:중앙은행채" ;
+    fp:parentCategory fp:BondCatM_Teuksuchae .
+
+fp:BondCatS_Gitasachae a fp:BondCategory ;
+    rdfs:label "기타사채"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:기타사채" ;
+    fp:parentCategory fp:BondCatM_Hoesachae .
+
+fp:BondCatS_Gitagukchae a fp:BondCategory ;
+    rdfs:label "기타국채"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:기타국채" ;
+    fp:parentCategory fp:BondCatM_Gukgongchae .
+
+fp:BondCatS_Gaeintujayonggukchae10nyeonmul a fp:BondCategory ;
+    rdfs:label "개인투자용국채10년물"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:개인투자용국채10년물" ;
+    fp:parentCategory fp:BondCatM_Gaeintujayonggukchae .
+
+fp:BondCatS_Gaeintujayonggukchae20nyeonmul a fp:BondCategory ;
+    rdfs:label "개인투자용국채20년물"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:개인투자용국채20년물" ;
+    fp:parentCategory fp:BondCatM_Gaeintujayonggukchae .
+
+fp:BondCatS_Gaeintujayonggukchae5nyeonmul a fp:BondCategory ;
+    rdfs:label "개인투자용국채5년물"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:개인투자용국채5년물" ;
+    fp:parentCategory fp:BondCatM_Gaeintujayonggukchae .
+
+fp:BondCatS_Mulgachae a fp:BondCategory ;
+    rdfs:label "물가채"@ko ;
+    fp:categoryLevel "mid" ;
+    fp:sourceColumn "std_pd_scls_nm" ;
+    fp:valueCode "tb_domestic_bond:물가채" ;
+    fp:parentCategory fp:BondCatM_Gukgongchae .
+
+fp:BondCatK_Ilbanhoesachae a fp:BondCategory ;
+    rdfs:label "일반회사채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:일반회사채" ;
+    fp:parentCategory fp:BondCatS_Gitasachae, fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Halbugeumyungchae a fp:BondCategory ;
+    rdfs:label "할부금융채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:할부금융채" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Ilbanteuksubeopinchae a fp:BondCategory ;
+    rdfs:label "일반특수법인채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:일반특수법인채" ;
+    fp:parentCategory fp:BondCatS_Gongsachae, fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Yudonghwahoesachae a fp:BondCategory ;
+    rdfs:label "유동화회사채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:유동화회사채" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Conduithoesachae a fp:BondCategory ;
+    rdfs:label "Conduit회사채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:Conduit회사채" ;
+    fp:parentCategory fp:BondCatS_Gitasachae, fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Sinyongkadeuchae a fp:BondCategory ;
+    rdfs:label "신용카드채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:신용카드채" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Teuksueunhaengchae a fp:BondCategory ;
+    rdfs:label "특수은행채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:특수은행채" ;
+    fp:parentCategory fp:BondCatS_Teuksueunhaengchae .
+
+fp:BondCatK_Mbs a fp:BondCategory ;
+    rdfs:label "MBS"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:MBS" ;
+    fp:parentCategory fp:BondCatS_Gongsachae .
+
+fp:BondCatK_Jiyeokgaebalchae a fp:BondCategory ;
+    rdfs:label "지역개발채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:지역개발채" ;
+    fp:parentCategory fp:BondCatS_Jiyeokgaebal .
+
+fp:BondCatK_Ilbaneunhaengchae a fp:BondCategory ;
+    rdfs:label "일반은행채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:일반은행채" ;
+    fp:parentCategory fp:BondCatS_Gitasachae, fp:BondCatS_Eunhaengchae, fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Siseoldaeyeochaeriseu a fp:BondCategory ;
+    rdfs:label "시설대여채(리스)"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:시설대여채(리스)" ;
+    fp:parentCategory fp:BondCatS_Gitasachae, fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Geumyungjijuhoesachae a fp:BondCategory ;
+    rdfs:label "금융지주회사채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:금융지주회사채" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Ilbanjibanggongsachae a fp:BondCategory ;
+    rdfs:label "일반지방공사채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:일반지방공사채" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Jibanggongsabosangchaegwon a fp:BondCategory ;
+    rdfs:label "지방공사보상채권"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:지방공사보상채권" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Tujamaemaejunggaechae a fp:BondCategory ;
+    rdfs:label "투자매매.중개채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:투자매매.중개채" ;
+    fp:parentCategory fp:BondCatS_Gitasachae, fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Gukgochaegwon a fp:BondCategory ;
+    rdfs:label "국고채권"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:국고채권" ;
+    fp:parentCategory fp:BondCatS_Gukgochae, fp:BondCatS_Mulgachae ;
+    fp:hasSynonym "국채" .
+
+fp:BondCatK_Dosicheoldogongchae a fp:BondCategory ;
+    rdfs:label "도시철도공채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:도시철도공채" ;
+    fp:parentCategory fp:BondCatS_Dosicheoldo .
+
+fp:BondCatK_Teuksubosangchaegwon a fp:BondCategory ;
+    rdfs:label "특수보상채권"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:특수보상채권" ;
+    fp:parentCategory fp:BondCatS_Gongsachae .
+
+fp:BondCatK_Gieopinsumokjeokhoesachae a fp:BondCategory ;
+    rdfs:label "기업인수목적회사채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:기업인수목적회사채" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Boheomhoesachae a fp:BondCategory ;
+    rdfs:label "보험회사채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:보험회사채" ;
+    fp:parentCategory fp:BondCatS_Gitasachae, fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Mojipjibangchae a fp:BondCategory ;
+    rdfs:label "모집지방채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:모집지방채" ;
+    fp:parentCategory fp:BondCatS_Gongmojibangchae .
+
+fp:BondCatK_Gitageumyunghoesachae a fp:BondCategory ;
+    rdfs:label "기타금융회사채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:기타금융회사채" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Tonghwaanjeongchaegwon a fp:BondCategory ;
+    rdfs:label "통화안정채권"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:통화안정채권" ;
+    fp:parentCategory fp:BondCatS_Jungangeunhaengchae .
+
+fp:BondCatK_Gukminjutaek1jong a fp:BondCategory ;
+    rdfs:label "국민주택1종"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:국민주택1종" ;
+    fp:parentCategory fp:BondCatS_Gukminjutaek .
+
+fp:BondCatK_Gukminjutaek2jong a fp:BondCategory ;
+    rdfs:label "국민주택2종"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:국민주택2종" ;
+    fp:parentCategory fp:BondCatS_Gukminjutaek .
+
+fp:BondCatK_Budongsantujahoesachae a fp:BondCategory ;
+    rdfs:label "부동산투자회사채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:부동산투자회사채" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Gitageumyungtujajeoneophoesachae a fp:BondCategory ;
+    rdfs:label "기타금융투자전업회사채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:기타금융투자전업회사채" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Gaeintujayonggukchae a fp:BondCategory ;
+    rdfs:label "개인투자용국채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:개인투자용국채" ;
+    fp:parentCategory fp:BondCatS_Gaeintujayonggukchae10nyeonmul, fp:BondCatS_Gaeintujayonggukchae20nyeonmul, fp:BondCatS_Gaeintujayonggukchae5nyeonmul .
+
+fp:BondCatK_Janggisaneopchaegwonteuksugeumyung a fp:BondCategory ;
+    rdfs:label "장기산업채권(특수금융)"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:장기산업채권(특수금융)" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae, fp:BondCatS_Teuksueunhaengchae .
+
+fp:BondCatK_Jiphaptujahoesachae a fp:BondCategory ;
+    rdfs:label "집합투자회사채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:집합투자회사채" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Slbs a fp:BondCategory ;
+    rdfs:label "SLBS"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:SLBS" ;
+    fp:parentCategory fp:BondCatS_Gongsachae .
+
+fp:BondCatK_Jaejeongjeunggwon a fp:BondCategory ;
+    rdfs:label "재정증권"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:재정증권" ;
+    fp:parentCategory fp:BondCatS_Gitagukchae .
+
+fp:BondCatK_Jeunggwongeumyungchaeteuksugeumyung a fp:BondCategory ;
+    rdfs:label "증권금융채(특수금융)"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:증권금융채(특수금융)" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Oegukhwanpyeonghyeonggigeum a fp:BondCategory ;
+    rdfs:label "외국환평형기금"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:외국환평형기금" ;
+    fp:parentCategory fp:BondCatS_Gitagukchae .
+
+fp:BondCatK_Junggichangtuhoesachae a fp:BondCategory ;
+    rdfs:label "중기창투회사채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:중기창투회사채" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Jonghapgeumyungchae a fp:BondCategory ;
+    rdfs:label "종합금융채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:종합금융채" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Sanghojeochukeunhaengchae a fp:BondCategory ;
+    rdfs:label "상호저축은행채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:상호저축은행채" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Singisulgeumyungchae a fp:BondCategory ;
+    rdfs:label "신기술금융채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:신기술금융채" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
+
+fp:BondCatK_Tujailimhoesachae a fp:BondCategory ;
+    rdfs:label "투자일임회사채"@ko ;
+    fp:categoryLevel "minor" ;
+    fp:sourceColumn "bd_knd" ;
+    fp:valueCode "tb_domestic_bond:투자일임회사채" ;
+    fp:parentCategory fp:BondCatS_Ilbansachae .
