@@ -1,7 +1,9 @@
 '''
 team triangle main agent loop
-v 2.0 - query_parser -> text_to_sql_agent 실루프 연결
+v 2.1 - 답변 정제(컬럼/행 축소) 추가
 '''
+
+import re
 
 # model
 from core.model_manager import get_model_manager
@@ -48,16 +50,39 @@ def get_agents(mm):
 
 
 def _filters_for_table(all_filters: list, table_name: str) -> list:
-    """resolved.filters 중 특정 테이블에 해당하는 것만 골라낸다.
-    'table' 키가 있으면 그걸로 매칭하고, 없으면(예: hasBondCategory처럼
-    카테고리 자체를 이미 결정하는 필터) 모든 테이블에 공통 적용되는
-    걸로 간주해 포함시킨다."""
+    """resolved.filters 중 특정 테이블에 해당하는 것만 골라낸다."""
     result = []
     for f in all_filters:
         f_table = f.get("table")
         if f_table is None or f_table == table_name:
             result.append(f)
     return result
+
+
+def _guess_identity_columns(columns):
+    """컬럼명 패턴으로 상품코드/상품명 컬럼을 추정 (테이블마다 하드코딩 불필요)."""
+    id_cols = []
+    for c in columns:
+        cl = c.lower()
+        if cl.endswith("no") or cl == "itm_no":
+            id_cols.append(c)
+    for c in columns:
+        cl = c.lower()
+        if cl.endswith("nm") and c not in id_cols:
+            id_cols.append(c)
+            break
+    return id_cols[:2]
+
+
+def _columns_used_in_sql(sql, columns):
+    """SELECT * 라서, SQL 텍스트(주로 WHERE절)에 실제 언급된 컬럼만 추출."""
+    if not sql:
+        return []
+    used = []
+    for c in columns:
+        if re.search(rf"\b{re.escape(c)}\b", sql):
+            used.append(c)
+    return used
 
 
 class Agent:
@@ -82,6 +107,31 @@ class Agent:
                 preview = dict(zip(cols, row))
                 lines.append(f"    · {preview}")
         return "\n".join(lines)
+
+    def _curate_sql_results(self, sql_results, max_rows=5):
+        """답변 생성 전, 관련 컬럼만 추리고 행 수를 제한한다."""
+        curated = {}
+        for table_name, r in sql_results.items():
+            if r.get("error") or not r.get("rows"):
+                curated[table_name] = r
+                continue
+            columns = r.get("columns", [])
+            keep = list(dict.fromkeys(
+                _guess_identity_columns(columns) + _columns_used_in_sql(r.get("sql"), columns)
+            ))
+            if not keep:
+                keep = columns[:6]
+
+            idxs = [columns.index(c) for c in keep]
+            curated_rows = [tuple(row[i] for i in idxs) for row in r["rows"][:max_rows]]
+
+            curated[table_name] = {
+                **r,
+                "columns": keep,
+                "rows": curated_rows,
+                "curated_row_count": len(curated_rows),
+            }
+        return curated
 
     def query(self, query):
         massage = []
@@ -123,8 +173,10 @@ class Agent:
         if failed_tables and len(failed_tables) == len(sql_results):
             return f"죄송합니다, 조회 중 오류가 발생했습니다: {sql_results[failed_tables[0]]['error']}"
 
+        curated = self._curate_sql_results(sql_results)
         # TODO(⑥ 답변합성 에이전트 완성되면 아래 한 줄을 그걸로 교체)
-        return self._format_results_plain(query, sql_results)
+        return self._format_results_plain(query, curated)
+
 
 if __name__ == "__main__":
     agent = Agent()

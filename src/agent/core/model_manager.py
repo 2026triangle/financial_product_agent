@@ -413,3 +413,23 @@ def get_model_manager(
             ModelManager._instance.set_api_credentials(api_key, base_url)
 
     return ModelManager._instance
+
+# --- ⑥ 답변합성 전용: 별도 CLOVA 모델 매니저 (기존 싱글턴과 완전히 분리) ---
+_clova_instance = None
+
+def get_clova_model_manager(reset: bool = False):
+    """
+    답변합성(HyperCLOVA X) 에이전트 전용 ModelManager.
+    get_model_manager()의 전역 싱글턴(_instance)과는 별개로,
+    이 함수만의 캐시(_clova_instance)를 따로 관리한다.
+    -> 이 함수를 아무리 불러도 QueryParser/TextToSQLAgent가 쓰는
+       Gemini용 get_model_manager() 싱글턴에는 영향이 없음.
+    """
+    global _clova_instance
+    if _clova_instance is None or reset:
+        _clova_instance = ModelManager(
+            api_key=os.getenv("CLOVA_API_KEY"),
+            base_url=os.getenv("CLOVA_BASE_URL"),
+            model_name=os.getenv("CLOVA_MODEL", "HCX-005"),
+        )
+    return _clova_instance
