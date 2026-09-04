@@ -151,27 +151,27 @@ fp:isSellable a owl:DatatypeProperty ; rdfs:domain fp:Product ; rdfs:range xsd:b
 #      근거: db/finance_master.db tb_domestic_etf GROUP BY pd_risk_cd, pd_risk_nm (1,734건, 결측 0, 1:1 대응, 2026-09-04 검증)
 # =============================================================================
 fp:RiskGrade1 a fp:RiskGrade ; rdfs:label "1등급 매우높은위험"@ko ; fp:rank 1 ;
-    fp:valueCode "tb_domestic_bond:1", "tb_domestic_etf:PD_RISK_GCD_11", "tb_fund:1.0" ;
+    fp:valueCode "tb_domestic_bond:11", "tb_domestic_etf:PD_RISK_GCD_11", "tb_fund:1.0" ;
     fp:altValueCode "tb_domestic_etf:매우높은위험(1등급)" ;
     fp:hasSynonym "매우높은위험", "매우 높은 위험", "초고위험" .
 fp:RiskGrade2 a fp:RiskGrade ; rdfs:label "2등급 높은위험"@ko ; fp:rank 2 ;
-    fp:valueCode "tb_domestic_bond:2", "tb_domestic_etf:PD_RISK_GCD_12", "tb_fund:2.0" ;
+    fp:valueCode "tb_domestic_bond:12", "tb_domestic_etf:PD_RISK_GCD_12", "tb_fund:2.0" ;
     fp:altValueCode "tb_domestic_etf:높은위험(2등급)" ;
     fp:hasSynonym "높은위험", "높은 위험" .
 fp:RiskGrade3 a fp:RiskGrade ; rdfs:label "3등급 다소높은위험"@ko ; fp:rank 3 ;
-    fp:valueCode "tb_domestic_bond:3", "tb_domestic_etf:PD_RISK_GCD_13", "tb_fund:3.0" ;
+    fp:valueCode "tb_domestic_bond:13", "tb_domestic_etf:PD_RISK_GCD_13", "tb_fund:3.0" ;
     fp:altValueCode "tb_domestic_etf:다소높은위험(3등급)" ;
     fp:hasSynonym "다소높은위험", "다소 높은 위험" .
 fp:RiskGrade4 a fp:RiskGrade ; rdfs:label "4등급 보통위험"@ko ; fp:rank 4 ;
-    fp:valueCode "tb_domestic_bond:4", "tb_domestic_etf:PD_RISK_GCD_14", "tb_fund:4.0" ;
+    fp:valueCode "tb_domestic_bond:14", "tb_domestic_etf:PD_RISK_GCD_14", "tb_fund:4.0" ;
     fp:altValueCode "tb_domestic_etf:보통위험(4등급)" ;
     fp:hasSynonym "보통위험", "보통 위험", "중위험" .
 fp:RiskGrade5 a fp:RiskGrade ; rdfs:label "5등급 낮은위험"@ko ; fp:rank 5 ;
-    fp:valueCode "tb_domestic_bond:5", "tb_domestic_etf:PD_RISK_GCD_15", "tb_fund:5.0" ;
+    fp:valueCode "tb_domestic_bond:15", "tb_domestic_etf:PD_RISK_GCD_15", "tb_fund:5.0" ;
     fp:altValueCode "tb_domestic_etf:낮은위험(5등급)" ;
     fp:hasSynonym "낮은위험", "낮은 위험", "저위험", "안전한" .
 fp:RiskGrade6 a fp:RiskGrade ; rdfs:label "6등급 매우낮은위험"@ko ; fp:rank 6 ;
-    fp:valueCode "tb_domestic_bond:6", "tb_domestic_etf:PD_RISK_GCD_16", "tb_fund:6.0" ;
+    fp:valueCode "tb_domestic_bond:16", "tb_domestic_etf:PD_RISK_GCD_16", "tb_fund:6.0" ;
     fp:altValueCode "tb_domestic_etf:매우낮은위험(6등급)" ;
     fp:hasSynonym "매우낮은위험", "매우 낮은 위험", "가장 안전한" .
 fp:RiskGradeUnknown a fp:RiskGrade ; rdfs:label "미분류"@ko ;
