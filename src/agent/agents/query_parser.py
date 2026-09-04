@@ -56,7 +56,18 @@ fp:investsInRegion (투자지역) / fp:isSellable (판매가능여부)
 질문에 등급·분류·자산군·지역·판매가능 여부 등 "값"에 대한 가정이 하나라도 있으면
 반드시 logical_verification 트리플로 표현하세요. 값 가정이 전혀 없을 때만 빈 배열을 반환하세요.
 
-* 수치 검증 - 사용자가 수치적으로 확인하고자 하는 주제를 분리하세요.
+* 수치 검증 - 사용자가 수치적으로 확인하려는 조건을 분리하세요.
+  등급·위험도처럼 "낮은", "높은", "안전한", "우량한" 같은 상대적 표현은
+  logical_verification(정확히 일치하는 값)이 아니라 numerical_verification에
+  부등호로 표현하세요. 값은 반드시 ">=" "<=" ">" "<" 중 하나로 시작하고,
+  그 뒤에 온톨로지가 아는 등급 이름을 그대로 씁니다.
+
+  위험이 낮은/안전한 쪽  -> {"risk_grade": "<=5등급 낮은위험"}
+  위험이 높은 쪽        -> {"risk_grade": ">=2등급 높은위험"}
+  신용등급이 우량한 쪽    -> {"credit_rating": ">=AA-"}
+
+  특정 등급 하나를 딱 집어 말한 경우("5등급인", "AAA인")에만
+  logical_verification 트리플로 표현하세요.
 
 배경 지식 :
 기본적으로 질문자는 한국인이며 한국에 세금을 납부합니다.
@@ -86,6 +97,17 @@ example :
     "category" : ["domestic_bond"],
     "logical_verification" : ["fp:Bond fp:hasBondCategory \\"국고채권\\""],
     "numerical_verification" : {}
+}
+
+[query]
+{
+    "query" : "위험 낮고 주식형인 국내ETF 추천해줘"
+}
+[answer]
+{
+    "category" : ["domestic_etf"],
+    "logical_verification" : ["fp:DomesticETF fp:investsInAssetClass \\"주식형\\""],
+    "numerical_verification" : {"risk_grade" : "<=5등급 낮은위험"}
 }
 
 {{retry_hint}}

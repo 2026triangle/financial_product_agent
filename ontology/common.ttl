@@ -153,27 +153,27 @@ fp:isSellable a owl:DatatypeProperty ; rdfs:domain fp:Product ; rdfs:range xsd:b
 fp:RiskGrade1 a fp:RiskGrade ; rdfs:label "1등급 매우높은위험"@ko ; fp:rank 1 ;
     fp:valueCode "tb_domestic_bond:11", "tb_domestic_etf:PD_RISK_GCD_11", "tb_fund:1.0" ;
     fp:altValueCode "tb_domestic_etf:매우높은위험(1등급)" ;
-    fp:hasSynonym "매우높은위험", "매우 높은 위험", "초고위험" .
+    fp:hasSynonym "매우높은위험", "매우 높은 위험", "초고위험", "1등급", "위험등급 1등급", "위험등급1" .
 fp:RiskGrade2 a fp:RiskGrade ; rdfs:label "2등급 높은위험"@ko ; fp:rank 2 ;
     fp:valueCode "tb_domestic_bond:12", "tb_domestic_etf:PD_RISK_GCD_12", "tb_fund:2.0" ;
     fp:altValueCode "tb_domestic_etf:높은위험(2등급)" ;
-    fp:hasSynonym "높은위험", "높은 위험" .
+    fp:hasSynonym "높은위험", "높은 위험", "2등급", "위험등급 2등급", "위험등급2" .
 fp:RiskGrade3 a fp:RiskGrade ; rdfs:label "3등급 다소높은위험"@ko ; fp:rank 3 ;
     fp:valueCode "tb_domestic_bond:13", "tb_domestic_etf:PD_RISK_GCD_13", "tb_fund:3.0" ;
     fp:altValueCode "tb_domestic_etf:다소높은위험(3등급)" ;
-    fp:hasSynonym "다소높은위험", "다소 높은 위험" .
+    fp:hasSynonym "다소높은위험", "다소 높은 위험", "3등급", "위험등급 3등급", "위험등급3" .
 fp:RiskGrade4 a fp:RiskGrade ; rdfs:label "4등급 보통위험"@ko ; fp:rank 4 ;
     fp:valueCode "tb_domestic_bond:14", "tb_domestic_etf:PD_RISK_GCD_14", "tb_fund:4.0" ;
     fp:altValueCode "tb_domestic_etf:보통위험(4등급)" ;
-    fp:hasSynonym "보통위험", "보통 위험", "중위험" .
+    fp:hasSynonym "보통위험", "보통 위험", "중위험", "4등급", "위험등급 4등급", "위험등급4" .
 fp:RiskGrade5 a fp:RiskGrade ; rdfs:label "5등급 낮은위험"@ko ; fp:rank 5 ;
     fp:valueCode "tb_domestic_bond:15", "tb_domestic_etf:PD_RISK_GCD_15", "tb_fund:5.0" ;
     fp:altValueCode "tb_domestic_etf:낮은위험(5등급)" ;
-    fp:hasSynonym "낮은위험", "낮은 위험", "저위험", "안전한" .
+    fp:hasSynonym "낮은위험", "낮은 위험", "저위험", "안전한", "5등급", "위험등급 5등급", "위험등급5" .
 fp:RiskGrade6 a fp:RiskGrade ; rdfs:label "6등급 매우낮은위험"@ko ; fp:rank 6 ;
     fp:valueCode "tb_domestic_bond:16", "tb_domestic_etf:PD_RISK_GCD_16", "tb_fund:6.0" ;
     fp:altValueCode "tb_domestic_etf:매우낮은위험(6등급)" ;
-    fp:hasSynonym "매우낮은위험", "매우 낮은 위험", "가장 안전한" .
+    fp:hasSynonym "매우낮은위험", "매우 낮은 위험", "가장 안전한", "6등급", "위험등급 6등급", "위험등급6" .
 fp:RiskGradeUnknown a fp:RiskGrade ; rdfs:label "미분류"@ko ;
     fp:valueCode "tb_domestic_bond:0" ;
     rdfs:comment "국내채권 58건. 등급 비교 질의에서 제외한다"@ko .
@@ -183,15 +183,16 @@ fp:RiskGradeUnknown a fp:RiskGrade ; rdfs:label "미분류"@ko ;
 #      crd_grd 는 'AA0' 형태, pd_evco_crd_grd 는 'AA' 형태 → hasSynonym 으로 연결
 #      "AA- 이상" = rank <= 4   /   투자등급 = rank <= 10 (BBB- 이상)
 # =============================================================================
-fp:CreditRating_AAA  a fp:CreditRating ; rdfs:label "AAA"  ; fp:rank  1 .
+fp:CreditRating_AAA  a fp:CreditRating ; rdfs:label "AAA"  ; fp:rank  1 ;
+    fp:hasSynonym "트리플에이", "AAA등급" .
 fp:CreditRating_AAp  a fp:CreditRating ; rdfs:label "AA+"  ; fp:rank  2 .
-fp:CreditRating_AA   a fp:CreditRating ; rdfs:label "AA0"  ; fp:rank  3 ; fp:hasSynonym "AA" .
+fp:CreditRating_AA   a fp:CreditRating ; rdfs:label "AA0"  ; fp:rank  3 ; fp:hasSynonym "AA", "AA등급" .
 fp:CreditRating_AAm  a fp:CreditRating ; rdfs:label "AA-"  ; fp:rank  4 .
 fp:CreditRating_Ap   a fp:CreditRating ; rdfs:label "A+"   ; fp:rank  5 .
 fp:CreditRating_A    a fp:CreditRating ; rdfs:label "A0"   ; fp:rank  6 ; fp:hasSynonym "A" .
 fp:CreditRating_Am   a fp:CreditRating ; rdfs:label "A-"   ; fp:rank  7 .
 fp:CreditRating_BBBp a fp:CreditRating ; rdfs:label "BBB+" ; fp:rank  8 .
-fp:CreditRating_BBB  a fp:CreditRating ; rdfs:label "BBB0" ; fp:rank  9 ; fp:hasSynonym "BBB" .
+fp:CreditRating_BBB  a fp:CreditRating ; rdfs:label "BBB0" ; fp:rank  9 ; fp:hasSynonym "BBB", "BBB등급" .
 fp:CreditRating_BBBm a fp:CreditRating ; rdfs:label "BBB-" ; fp:rank 10 ;
     rdfs:comment "투자등급(Investment Grade) 하한"@ko .
 fp:CreditRating_BBp  a fp:CreditRating ; rdfs:label "BB+"  ; fp:rank 11 .
@@ -210,13 +211,13 @@ fp:CreditRating_C    a fp:CreditRating ; rdfs:label "C0"   ; fp:rank 19 ; fp:has
 # =============================================================================
 fp:AssetClass_Equity a fp:AssetClass ; rdfs:label "주식"@ko ;
     fp:valueCode "tb_domestic_etf:주식", "tb_foreign_etf:Equity", "tb_fund:주식형" ;
-    fp:hasSynonym "주식형", "Equity", "주식에 투자하는" .
+    fp:hasSynonym "주식형", "Equity", "주식에 투자하는", "주식 위주", "주식에 주로", "에쿼티" .
 fp:AssetClass_Bond a fp:AssetClass ; rdfs:label "채권"@ko ;
     fp:valueCode "tb_domestic_etf:채권", "tb_foreign_etf:Bond", "tb_fund:채권형" ;
-    fp:hasSynonym "채권형", "Bond", "Fixed Income" .
+    fp:hasSynonym "채권형", "Bond", "Fixed Income", "채권 위주", "본드" .
 fp:AssetClass_Commodity a fp:AssetClass ; rdfs:label "원자재"@ko ;
     fp:valueCode "tb_domestic_etf:원자재", "tb_foreign_etf:Commodity" ;
-    fp:hasSynonym "Commodity", "금", "원유" ; fp:notAvailableIn "tb_fund" .
+    fp:hasSynonym "Commodity", "금", "원유", "커모디티", "귀금속" ; fp:notAvailableIn "tb_fund" .
 fp:AssetClass_Mixed a fp:AssetClass ; rdfs:label "혼합자산"@ko ;
     fp:valueCode "tb_domestic_etf:혼합자산", "tb_foreign_etf:Mixed Assets", "tb_fund:혼합자산" ;
     fp:hasSynonym "Mixed Assets", "자산배분" .
@@ -231,7 +232,7 @@ fp:AssetClass_Currency a fp:AssetClass ; rdfs:label "통화"@ko ;
     fp:valueCode "tb_domestic_etf:통화" ; fp:hasSynonym "환율", "달러선물" ;
     fp:notAvailableIn "tb_foreign_etf", "tb_fund" .
 fp:AssetClass_RealEstate a fp:AssetClass ; rdfs:label "부동산"@ko ;
-    fp:valueCode "tb_domestic_etf:부동산", "tb_fund:임대형" ; fp:hasSynonym "리츠", "REITs" .
+    fp:valueCode "tb_domestic_etf:부동산", "tb_fund:임대형" ; fp:hasSynonym "리츠", "REITs", "리츠형" .
 fp:AssetClass_Alternatives a fp:AssetClass ; rdfs:label "대안투자"@ko ;
     fp:valueCode "tb_foreign_etf:Alternatives", "tb_fund:특별자산" ;
     fp:hasSynonym "Alternatives", "대체투자", "특별자산" ;
@@ -249,15 +250,15 @@ fp:AssetClass_Other a fp:AssetClass ; rdfs:label "기타"@ko ; fp:valueCode "tb_
 # =============================================================================
 fp:Region_Korea a fp:Region ; rdfs:label "국내"@ko ;
     fp:valueCode "tb_domestic_etf:국내", "tb_foreign_etf:Korea", "tb_fund:국내" ;
-    fp:hasSynonym "한국", "Korea", "국내 증시" .
+    fp:hasSynonym "한국", "Korea", "국내 증시", "국내쪽", "한국시장", "코스피", "코스닥" .
 fp:Region_US a fp:Region ; rdfs:label "미국"@ko ;
     fp:valueCode "tb_domestic_etf:미국", "tb_foreign_etf:United States of America" ;
-    fp:hasSynonym "United States of America", "미국 증시", "US", "S&P" ;
+    fp:hasSynonym "United States of America", "미국 증시", "US", "S&P", "미국쪽", "미국시장", "북미쪽" ;
     fp:notAvailableIn "tb_fund" ;
     rdfs:comment "공모펀드는 '남미/북미' 대륙 단위까지만 제공 → 미국 단독 필터 불가"@ko .
 fp:Region_Global a fp:Region ; rdfs:label "글로벌"@ko ;
     fp:valueCode "tb_domestic_etf:글로벌", "tb_foreign_etf:Global", "tb_fund:글로벌" ;
-    fp:hasSynonym "Global", "전세계" .
+    fp:hasSynonym "Global", "전세계", "월드" .
 fp:Region_GlobalExUS a fp:Region ; rdfs:subClassOf fp:Region_Global ; rdfs:label "미국제외 글로벌"@ko ;
     fp:valueCode "tb_foreign_etf:Global Ex US" .
 fp:Region_Emerging a fp:Region ; rdfs:label "이머징/브릭스"@ko ;
@@ -268,10 +269,10 @@ fp:Region_Emerging a fp:Region ; rdfs:label "이머징/브릭스"@ko ;
 fp:Region_China a fp:Region ; rdfs:label "중국"@ko ;
     fp:valueCode "tb_domestic_etf:중국", "tb_foreign_etf:China", "tb_foreign_etf:Greater China",
                  "tb_foreign_etf:Hong Kong", "tb_foreign_etf:Taiwan" ;
-    fp:hasSynonym "China", "중화권" ; fp:notAvailableIn "tb_fund" .
+    fp:hasSynonym "China", "중화권", "중국쪽", "차이나" ; fp:notAvailableIn "tb_fund" .
 fp:Region_Japan a fp:Region ; rdfs:label "일본"@ko ;
     fp:valueCode "tb_domestic_etf:일본", "tb_foreign_etf:Japan" ;
-    fp:hasSynonym "Japan" ; fp:notAvailableIn "tb_fund" .
+    fp:hasSynonym "Japan", "일본쪽", "재팬" ; fp:notAvailableIn "tb_fund" .
 fp:Region_India a fp:Region ; rdfs:label "인도"@ko ;
     fp:valueCode "tb_domestic_etf:인도", "tb_foreign_etf:India" ;
     fp:hasSynonym "India" ; fp:notAvailableIn "tb_fund" .
@@ -322,19 +323,22 @@ fp:BondCatM_Hoesachae a fp:BondCategory ;
     rdfs:label "회사채"@ko ;
     fp:categoryLevel "major" ;
     fp:sourceColumn "std_pd_mcls_nm" ;
-    fp:valueCode "tb_domestic_bond:회사채" .
+    fp:valueCode "tb_domestic_bond:회사채" ;
+    fp:hasSynonym "기업채", "회사 채권" .
 
 fp:BondCatM_Teuksuchae a fp:BondCategory ;
     rdfs:label "특수채"@ko ;
     fp:categoryLevel "major" ;
     fp:sourceColumn "std_pd_mcls_nm" ;
-    fp:valueCode "tb_domestic_bond:특수채" .
+    fp:valueCode "tb_domestic_bond:특수채" ;
+    fp:hasSynonym "특수법인채" .
 
 fp:BondCatM_Gukgongchae a fp:BondCategory ;
     rdfs:label "국공채"@ko ;
     fp:categoryLevel "major" ;
     fp:sourceColumn "std_pd_mcls_nm" ;
-    fp:valueCode "tb_domestic_bond:국공채" .
+    fp:valueCode "tb_domestic_bond:국공채" ;
+    fp:hasSynonym "나라채권", "정부채" .
 
 fp:BondCatM_Gaeintujayonggukchae a fp:BondCategory ;
     rdfs:label "개인투자용국채"@ko ;
