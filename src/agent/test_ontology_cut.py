@@ -86,7 +86,7 @@ CASES = [
     {
         "kind": "cut",
         "name": "채권분류 허용값 위반 (BondCategory)",
-        "query": "국고채권ㅋㅋ 찾아줘",
+        "query": "외계채권ㅋㅋ 찾아줘",
     },
     {
         "kind": "cut",
