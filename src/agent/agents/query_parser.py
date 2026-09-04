@@ -84,6 +84,7 @@ example :
     "numerical_verification" : {}
 }
 
+{{retry_hint}}
 query :
 {
     "query" : {{query}}
@@ -91,6 +92,16 @@ query :
 answer :
 
 '''
+
+# 재시도(2회차부터)에서만 프롬프트에 끼워 넣는 안내문. base_query가 이미 "answer :"로
+# 끝나는 상태에서 이 문구를 뒤에 그냥 이어붙이면(예전 방식) 답을 써야 할 자리에 새 지시문이
+# 끼어들어 few-shot 패턴이 깨진다 — 그래서 PROMPT 안의 {{retry_hint}} 자리에 넣는다
+# (qp_task9_json.md §4). 1회차엔 반드시 빈 문자열로 치환해야 한다.
+RETRY_HINT = (
+    "[중요] 직전 응답이 유효한 JSON이 아니었습니다. "
+    "설명·해설·머리말 없이 JSON 객체 **하나만** 출력하세요. "
+    "위 example 블록을 다시 출력하지 마세요."
+)
 
 # 트리플 목적어에서 술어 로컬명 → OntologyValidator 통제 어휘 개념명 매핑.
 # fp:hasBondCategory는 라벨마다 컬럼(대/중/소분류)이 달라 resolve_category()로 별도 처리한다.
@@ -119,24 +130,96 @@ _RANK_INEQUALITY_RE = re.compile(r'^\s*(>=|<=|>|<|=)\s*(.+?)\s*$')
 
 def _extract_json(text):
     """LLM 응답 텍스트에서 JSON 객체를 최대한 관대하게 뽑아낸다.
-    코드펜스(```json ... ```)로 감싸져 오거나 앞뒤에 설명 문장이 붙어 오는 경우를 모두 처리한다.
-    파싱에 실패하면 None을 반환한다 (예외를 던지지 않음 — 호출부에서 재시도로 이어감)."""
+
+    qp_task9_json.md §3 — find/rfind 방식과 코드펜스 정규식은 쓰지 않는다. 둘 다
+    "첫 { 부터 마지막 } 까지"를 통째로 잘라내는 방식이라 출력에 완결된 JSON 객체가
+    둘 이상이면(모델이 초안 후 다시 정리해서 출력하는 경우 등) 그 사이 텍스트까지
+    삼켜서 반드시 깨진다. 대신 중괄호 깊이를 세는 스캐너로 완결된 `{...}` 후보를
+    전부 모으고, 그중 파싱되는 dict만 골라 채택한다.
+
+    - 문자열 리터럴 안의 중괄호/따옴표는 깊이 계산에서 제외한다(백슬래시 이스케이프 처리 포함).
+      이게 없으면 `"description": "{인덱스}"` 같은 값에서 깊이가 어긋난다. 이 판정은
+      **후보마다 독립적으로** 한다 — 텍스트 전체에 걸친 전역 "지금 문자열 안인가"
+      상태를 미리 계산해두지 않는다. 전역으로 계산하면 앞쪽 해설 문장에 짝이 안 맞는
+      큰따옴표가 하나만 있어도 그 뒤 전체가 "문자열 안"으로 잘못 인식돼, 그 뒤의
+      진짜 JSON 시작 중괄호를 전부 후보에서 걸러버린다(교차검증 라운드 3에서 지적됨).
+      깊이 카운터를 전역으로 하나만 두면 안 되는 것과 정확히 같은 이유다.
+    - 코드펜스(```json ... ```)는 따로 처리하지 않는다 — 백틱은 중괄호가 아니라서
+      스캐너가 자연히 무시한다.
+    - 모든 `{`를 잠재적 후보 시작점으로 독립적으로 시도한다 — 앞선 시작점이 깨져
+      있어도(안 닫히거나, 실은 문자열 안이었거나) 뒤따르는 완결된 객체를 놓치지 않는다.
+      문자열 안의 `{`에서 시작을 시도해도 결과 조각이 올바른 JSON이 아니면 `json.loads`가
+      실패해서 자연히 걸러진다 — 별도로 "문자열 안이니 시도조차 하지 말자"는 최적화를
+      두지 않는다(그 최적화 자체가 위 버그의 원인이었다).
+    - 다른 후보 범위 안에 완전히 포함된(중첩된) 후보는 제외한다. 예를 들어
+      `numerical_verification`의 값처럼 최상위 객체 안에 중첩된 하위 객체도 독립적으로
+      후보에 잡히는데, 이걸 걸러내지 않으면 최상위 객체에 "category" 키가 없는
+      비정상 응답에서 하위 객체가 [-1] 선택 로직에 의해 전체 대신 잘못 뽑힐 수 있다
+      (교차검증 라운드 3에서 지적됨).
+    - 남은(중첩되지 않은) 후보가 여럿이면 "category" 키를 가진 것 중 마지막 것을
+      채택한다(모델이 초안을 내고 다시 정리해 출력하면 나중 것이 최종본일 확률이 높다).
+      "category" 키를 가진 게 하나도 없으면 그중 마지막 것을 쓴다.
+    - 후보가 하나도 없거나 전부 파싱에 실패하면 None을 반환한다. 예외를 던지지 않는다
+      (호출부가 재시도로 이어감). 시그니처(`_extract_json(text) -> dict | None`)는 그대로다.
+    """
     if not text:
         return None
-    text = text.strip()
 
-    fence_match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", text, re.DOTALL)
-    if fence_match:
-        text = fence_match.group(1)
-    else:
-        start, end = text.find("{"), text.rfind("}")
-        if start != -1 and end != -1 and end > start:
-            text = text[start:end + 1]
+    n = len(text)
 
-    try:
-        return json.loads(text)
-    except (json.JSONDecodeError, TypeError):
+    # 문자열 밖/안 여부를 전역으로 미리 계산하지 않는다 — '{' 마다 독립적으로 자기만의
+    # 상태(depth, 문자열 안 여부, 이스케이프)로 스캔하고, 완결되면 즉시 json.loads로
+    # 검증한다. 유효한 dict만 spans에 (시작, 끝, 파싱결과)로 남긴다.
+    spans = []
+    for start in range(n):
+        if text[start] != "{":
+            continue
+        depth = 0
+        in_str = False
+        esc = False
+        for j in range(start, n):
+            ch = text[j]
+            if in_str:
+                if esc:
+                    esc = False
+                elif ch == "\\":
+                    esc = True
+                elif ch == '"':
+                    in_str = False
+                continue
+            if ch == '"':
+                in_str = True
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    try:
+                        obj = json.loads(text[start:j + 1])
+                    except (json.JSONDecodeError, TypeError):
+                        obj = None
+                    if isinstance(obj, dict):
+                        spans.append((start, j, obj))
+                    break
+        # 끝까지 스캔해도 depth가 0으로 안 돌아오면(안 닫힌 조각) 이 시작점은 후보 없음.
+
+    if not spans:
         return None
+
+    # 다른 후보 범위 안에 완전히 포함된 후보(중첩된 하위 객체)는 제외한다.
+    def _is_nested(idx):
+        s, e, _ = spans[idx]
+        return any(
+            other_idx != idx and s2 <= s and e <= e2
+            for other_idx, (s2, e2, _) in enumerate(spans)
+        )
+
+    top_level = [obj for i, (_, _, obj) in enumerate(spans) if not _is_nested(i)]
+    if not top_level:
+        top_level = [obj for _, _, obj in spans]  # 이론상 도달하지 않는 방어적 폴백
+
+    with_category = [d for d in top_level if "category" in d]
+    return with_category[-1] if with_category else top_level[-1]
 
 
 def _ensure_str_list(value):
@@ -219,28 +302,43 @@ class QueryParser(Agent):
     def query(self, query):
         think_trace = []
 
-        # json.dumps로 이스케이프해서 넣는다 — query에 큰따옴표나 줄바꿈이 섞여 있으면
-        # f'"{query}"' 단순 치환은 프롬프트 안의 JSON 예시 블록 문법을 깨뜨린다.
-        base_query = self.prompt.replace('{{query}}', json.dumps(query, ensure_ascii=False))
+        # 사용자 입력({{query}})은 항상 마지막에 치환한다. {{query}} -> {{retry_hint}}
+        # 순서로 치환하면, 사용자 입력 텍스트 안에 우연히(또는 악의적으로) "{{retry_hint}}"
+        # 라는 문자열이 들어있을 때 그다음 {{retry_hint}} 치환이 사용자 입력 내용까지
+        # 건드려버린다. 그래서 온톨로지/재시도용 플레이스홀더를 전부 먼저 치환해
+        # 더 이상 남은 플레이스홀더가 없는 상태를 만든 뒤, 사용자 입력을 맨 마지막에 넣는다.
+        # json.dumps로 이스케이프해서 넣는 이유는 그대로다 — query에 큰따옴표나 줄바꿈이
+        # 섞여 있으면 f'"{query}"' 단순 치환은 프롬프트 안의 JSON 예시 블록 문법을 깨뜨린다.
+        query_json = json.dumps(query, ensure_ascii=False)
 
         # 1) LLM 응답 JSON 파싱 + 실패 시 재시도 (LLM 출력은 깨질 수 있음)
         parsed = None
         last_result = None
-        cp_query = base_query
         for attempt in range(1, MAX_PARSE_RETRIES + 1):
+            # {{retry_hint}}는 1회차엔 반드시 빈 문자열로 치환한다 — 빠뜨리면 플레이스홀더
+            # 문자열이 그대로 LLM에 들어간다 (qp_task9_json.md §4).
+            cp_query = self.prompt.replace('{{retry_hint}}', '' if attempt == 1 else RETRY_HINT)
+            cp_query = cp_query.replace('{{query}}', query_json)
             last_result = super().query(cp_query)
-            content = last_result.get('content', '') if isinstance(last_result, dict) else str(last_result)
+            # dict.get(key, default)는 키가 "없을 때"만 default를 쓴다 — 키는 있는데 값이
+            # None(예: {"content": None})이면 그대로 None이 나온다. 아래 로깅에서
+            # len(content)/content[:800]를 쓰므로 content는 항상 str이어야 한다.
+            content = last_result.get('content') if isinstance(last_result, dict) else last_result
+            content = content if isinstance(content, str) else ('' if content is None else str(content))
             parsed = _extract_json(content)
             if not isinstance(parsed, dict):
                 # 최상위가 배열/문자열 등 dict가 아니면 이후 parsed.get(...) 호출이 전부
                 # 깨지므로, 형식이 안 맞는 응답으로 간주하고 재시도 루프로 넘긴다.
                 parsed = None
             if parsed is not None:
+                if attempt > 1:
+                    logger.info(f"QueryParser JSON 파싱 성공 ({attempt}회차)")
                 break
-            logger.warning(f"QueryParser JSON 파싱 실패 ({attempt}/{MAX_PARSE_RETRIES}회), 재시도합니다.")
-            cp_query = base_query + (
-                "\n\n[재시도 안내] 방금 응답이 유효한 JSON이 아니었습니다. "
-                "다른 설명 없이 JSON 객체 하나만 출력하세요."
+            # Step 1(qp_task9_json.md §2) — 실패 원문을 그대로 남긴다. 이게 없으면 왜
+            # 깨졌는지(여러 JSON 객체? 코드펜스 중첩? 설명 붙임?) 눈으로 확인할 수 없다.
+            logger.warning(
+                f"QueryParser JSON 파싱 실패 ({attempt}/{MAX_PARSE_RETRIES}회), 재시도합니다. "
+                f"원문[{len(content)}자]: {content[:800]!r}"
             )
 
         # Agent 기본 클래스(agents/agent.py)의 반환 계약({"content", "id"})은 이후 모든
