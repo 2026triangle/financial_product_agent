@@ -253,18 +253,25 @@ def run_build_filters_checks(qp) -> bool:
 def case_excluded_category_removed_from_resolved_tables():
     """회귀 케이스. _build_filters()가 판정한 excluded_categories가 resolved['tables']/
     table_results에서 실제로 빠져야 한다 — 안 그러면 이 결과를 읽는 다음 단계
-    (Text-to-SQL)가 제외됐어야 할 테이블을 계속 조회 대상으로 본다."""
+    (Text-to-SQL)가 제외됐어야 할 테이블을 계속 조회 대상으로 본다.
+
+    다중 카테고리 시나리오를 쓴다(fund + domestic_bond) — 단일 카테고리(fund만)였다면
+    Task 12 Step 2("답할 대상이 없으면 컷") 때문에 이 케이스 자체가 컷되어 버려서,
+    원래 검증하려던 "제외된 카테고리가 tables에서 실제로 빠지는지"를 확인할 수 없다."""
     canned = json.dumps({
-        "category": ["fund"],
-        "logical_verification": ['fp:Fund fp:investsInAssetClass "원자재"'],
+        "category": ["fund", "domestic_bond"],
+        "logical_verification": [
+            'fp:Fund fp:investsInAssetClass "원자재"',
+            'fp:Bond fp:hasCreditRating "AAA"',
+        ],
         "numerical_verification": {},
     }, ensure_ascii=False)
     qp = QueryParser(_FakeModelManager(canned))
-    result = qp.query("원자재에 투자하는 공모펀드 알려줘")
+    result = qp.query("원자재에 투자하는 공모펀드랑 신용등급 AAA인 국내채권 알려줘")
 
     ok = result.get("answerable") is True
-    ok = ok and result.get("resolved", {}).get("tables") == {}
-    ok = ok and result.get("table_results") == {}
+    ok = ok and result.get("resolved", {}).get("tables") == {"domestic_bond": "tb_domestic_bond"}
+    ok = ok and result.get("table_results") is not None and "fund" not in result.get("table_results", {})
     if not ok:
         print(f"  result={result!r}")
     return ok

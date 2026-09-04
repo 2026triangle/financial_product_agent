@@ -14,9 +14,15 @@ test_ontology_cut.py — 답변 불가능 질의 컷 회귀 테스트 (Task 8, q
   §7.2 정규화 단위 테스트 — OntologyValidator만으로 도는 LLM 불필요 테스트. 별도 함수로 두되
        같은 실행에서 먼저 돈다(파일을 새로 만들지 않고 이 파일 안에 구획을 분리).
        트리플 총 개수는 계속 늘어나므로 assert하지 않는다.
-  §7.1 컷 회귀 테스트 — LLM 호출이 실제로 발생하는 6케이스. 케이스마다 성격이 달라 세 종류로 나눈다:
-       - "cut"          : 반드시 answerable=False로 컷되어야 하는 케이스 (1~4)
-       - "pass_through" : 컷되면 안 되고, 특정 카테고리 제외 판단이 think_trace에 남아야 하는 케이스 (5)
+  §7.1 컷 회귀 테스트 — LLM 호출이 실제로 발생하는 6케이스. 케이스마다 성격이 달라 종류로 나눈다:
+       - "cut"          : 반드시 answerable=False로 컷되어야 하는 케이스 (1~4, 5)
+                          5번은 Task 12(qp_task12_unanswerable.md §7.3)에서 기대값이
+                          바뀌었다 — 원래 "컷 아님"이었으나, 이제 원자재 조건 하나 때문에
+                          fund 카테고리 전체가 제외되면 답할 대상이 없어 컷되는 게 옳다.
+                          "expect_trace_substring"으로 제외 판단이 think_trace에 남는지도 검사한다.
+       - "pass_through" : 컷되면 안 되고, 특정 카테고리 제외 판단이 think_trace에 남아야 하는
+                          케이스용 (현재 CASES에는 없음 — 여러 카테고리 중 일부만 제외되는
+                          시나리오가 생기면 재사용)
        - "diagnostic"   : 두 경로(허용값 위반 컷 / 트리플 미추출) 중 무엇이 일어났는지 구분해
                           출력하는 것 자체가 목적인 케이스 (6)
 
@@ -99,9 +105,16 @@ CASES = [
         "query": "7등급 위험 상품 알려줘",
     },
     {
-        "kind": "pass_through",
-        "name": "원자재 펀드 제외 판단 (컷 아님)",
+        # Task 12(qp_task12_unanswerable.md §7.3)에서 기대값이 바뀌었다. 원자재는
+        # tb_fund에 없는 값(value_not_in_table)이고 카테고리가 fund 하나뿐이라, 이 조건을
+        # 제외하면 답할 수 있는 상품군이 하나도 안 남는다 — 이제는 이게 "컷 아님"이 아니라
+        # 정확히 "확인할 수 없음 + 역질문"으로 컷되는 게 옳다(답변 불가 문항 정답 형태).
+        # 가드를 약화시키지 않고 기대값을 고쳤다 — think_trace에 원자재 제외 판단이
+        # 남아 있는지는 expect_trace_substring으로 계속 검사한다.
+        "kind": "cut",
+        "name": "원자재 펀드 → 조회 대상 없음으로 컷 (Task 12 Step 2)",
         "query": "원자재에 투자하는 공모펀드 알려줘",
+        "expect_trace_substring": "제외",
     },
     {
         "kind": "diagnostic",
@@ -131,8 +144,11 @@ def _print_header(name, query, call_count):
     print(f"  LLM 호출: {call_count}회")
 
 
-def _run_cut_case(query_parser, result, call_count):
-    """1~4번: 반드시 answerable=False로 컷되어야 한다."""
+def _run_cut_case(query_parser, result, call_count, case=None):
+    """1~4번, 5번: 반드시 answerable=False로 컷되어야 한다.
+    case에 "expect_trace_substring"이 있으면(5번 — Task 12 Step 2) think_trace에
+    그 부분 문자열이 남아 있는지도 검사한다 — 카테고리가 왜 제외됐는지 로그가
+    실제로 남는지 확인하려는 것이다(qp_task12_unanswerable.md §7.3)."""
     failures = []
 
     if result.get("answerable") is not False:
@@ -160,6 +176,12 @@ def _run_cut_case(query_parser, result, call_count):
     if call_count != 1:
         failures.append(f"LLM 호출 횟수가 1이 아님 (실제: {call_count}회)")
 
+    expect_substr = (case or {}).get("expect_trace_substring")
+    if expect_substr:
+        think_trace = result.get("think_trace") or []
+        if not any(expect_substr in t for t in think_trace):
+            failures.append(f"think_trace에 '{expect_substr}' 관련 로그가 없음: {think_trace!r}")
+
     passed = not failures
     if passed:
         print(f"  reason: {reason}")
@@ -178,7 +200,7 @@ def _run_cut_case(query_parser, result, call_count):
     return passed
 
 
-def _run_pass_through_case(query_parser, result, call_count):
+def _run_pass_through_case(query_parser, result, call_count, case=None):
     """5번: 컷되면 안 되고, 특정 카테고리 제외 판단이 think_trace에 남아야 한다."""
     failures = []
 
@@ -206,7 +228,7 @@ def _run_pass_through_case(query_parser, result, call_count):
     return passed
 
 
-def _run_diagnostic_case(query_parser, result, call_count):
+def _run_diagnostic_case(query_parser, result, call_count, case=None):
     """6번: 허용값 위반 컷 / 트리플 미추출 중 어느 경로인지 구분해서 보여주는 게 목적이다.
     두 경로 모두 '정상'으로 본다 — 다만 검색까지 새어나간 경우(진짜 문제)만 FAIL 처리한다."""
     answerable = result.get("answerable")
@@ -262,7 +284,7 @@ def run_case(query_parser, call_state, case):
 
     call_count = call_state["count"]
     _print_header(name, query, call_count)
-    passed = _RUNNERS[kind](query_parser, result, call_count)
+    passed = _RUNNERS[kind](query_parser, result, call_count, case)
     print(f"[{'PASS' if passed else 'FAIL'}] {name}")
     print()
     return passed

@@ -18,8 +18,10 @@ A1
 import json
 import logging
 import os
+import random
 import re
 import sqlite3
+import time
 
 from agents.agent import Agent
 from config import config
@@ -334,6 +336,45 @@ class QueryParser(Agent):
         # rdflib 로드 + 인덱스 구축은 여기서 한 번만 (get_ontology_validator가 프로세스당
         # 싱글톤을 보장 — endpoint/meta_column_table.py 싱글톤 관습과 동일)
         self.validator = get_ontology_validator()
+        # Step 3(qp_task12_unanswerable.md §5) — JSON 모드 지원 여부를 프로세스 생애주기
+        # 동안 한 번만 확인한다. QueryParser 인스턴스는 main.Agent가 프로세스당 하나만
+        # 만들어 재사용하므로(agents/agent.py의 get_agents), 최초 1회 실패하면 그 뒤로는
+        # 다시 시도하지 않고 바로 일반 모드로 호출한다 — 매번 재시도하면 지원이 안 될 때
+        # 매 호출마다 실패+폴백 두 번을 호출하게 되어 "케이스당 정확히 1회" 전제가 깨진다.
+        self._json_mode_supported = True
+
+    def _call_llm(self, prompt: str) -> dict:
+        """Agent.query()(agents/agent.py)와 동일한 {"content", "id"} 반환 계약을 유지하면서,
+        가능하면 response_format={"type":"json_object"}로 호출해 JSON 파싱 실패/재시도를
+        줄인다 (qp_task12_unanswerable.md §5).
+
+        super().query()를 쓰지 않는 이유: Agent.query()는 mm.generate_text(query)만
+        호출해서 response_format을 넘길 수 없다. 이 작업은 query_parser.py 한 파일만
+        고치라는 제약이 있어 agents/agent.py는 건드리지 않는다.
+
+        LLM 호출은 항상 self.mm.generate_text를 경유한다 — 회귀 테스트가 이 메서드를
+        래핑해서 호출 횟수를 센다(다른 경로로 우회하면 호출 횟수가 0으로 세어져 테스트가
+        깨진다). Gemini의 OpenAI 호환 레이어가 response_format을 지원하지 않아 400을
+        내면 예외를 잡아 일반 모드로 폴백하고, 폴백 사실을 로그로 남긴다. 지원 여부를
+        코드로 가정하지 않는다.
+        """
+        if self._json_mode_supported:
+            try:
+                content = self.mm.generate_text(prompt, response_format={"type": "json_object"})
+            except Exception as e:
+                logger.warning(
+                    f"QueryParser: response_format(JSON 모드) 호출 실패, 일반 모드로 폴백합니다 "
+                    f"(이번 프로세스에서는 이후 JSON 모드를 다시 시도하지 않음): "
+                    f"{type(e).__name__}: {e}"
+                )
+                self._json_mode_supported = False
+                content = self.mm.generate_text(prompt)
+        else:
+            content = self.mm.generate_text(prompt)
+
+        query_id = str(time.time() + random.random())
+        self.query_history[query_id] = {prompt: content}
+        return {"content": content, "id": query_id}
 
     def _build_filters(self, triples, tables, think_trace):
         """검증을 통과한 트리플들을 SQL 필터로 조립한다. LLM 없이 단위 테스트할 수
@@ -347,16 +388,18 @@ class QueryParser(Agent):
         ETF 테이블에도 던져지며 엉뚱하게 걸러졌다. fp:Product/fp:ETF처럼 상품군을
         특정하지 않는 주어만 모든 카테고리를 순회하는 폴백 경로를 탄다.
 
-        exclusion 판정(§2.3, §2.5) — resolve_filter_value()가 구분해주는 5가지 reason 중:
+        exclusion 판정(qp_task12_unanswerable.md §2~3으로 갱신) — resolve_filter_value()가
+        구분해주는 reason 중 subject_scoped(주어가 카테고리를 명확히 지목)일 때:
           - value_not_in_table: 개념은 있는데 "이 값"만 이 테이블에 없다(원자재@펀드).
-            주어가 그 카테고리를 지목한 경우(subject_scoped)에만 그 카테고리를 제외한다
-            (Task 8 회귀 테스트 케이스 5 — 반드시 유지).
+            카테고리를 제외한다 (Task 8 회귀 테스트 케이스 5).
           - not_in_table: 개념 자체가 이 테이블에 없다(자산군@채권, 위험등급@해외ETF).
-            §2.5가 명시한 대로 이 경우는 절대 카테고리를 제외하지 않는다 — "이 값이
-            없다"가 아니라 "이 조건을 이 테이블에서는 판단할 수 없다"이기 때문이다.
-            (주어가 카테고리를 지목했든 폴백 경로든 동일하게 제외하지 않는다.)
+            **이것도 카테고리를 제외한다.** Task 10 시점엔 "이 값이 없다"와 다르다고
+            보고 제외하지 않았는데, 실제로는 더 심각한 쪽(개념 자체가 없음)이 더 관대하게
+            처리되는 역전이었다 — 조건만 증발하고 카테고리는 남아서 해당 상품군 전체가
+            무필터로 후보에 남는 문제가 있었다(qp_task12_unanswerable.md §2 실측).
           - 폴백 경로(subject_scoped=False)에서는 reason과 무관하게 어떤 카테고리도
             제외하지 않는다 — 안 맞는 조합은 조용히 건너뛰고 think_trace에만 남긴다.
+            어느 카테고리를 겨냥한 조건인지 알 수 없기 때문이다.
         """
         filters = []
         excluded_categories = set()
@@ -451,10 +494,15 @@ class QueryParser(Agent):
                         "category": category, "table": table,
                     })
                 elif reason == "not_in_table":
-                    # 실제로 카테고리를 제외하지 않는다 — "이 조건을 판단할 수 없다"일 뿐이다.
+                    # value_not_in_table과 같은 조건(subject_scoped)으로 카테고리를 제외한다
+                    # (qp_task12_unanswerable.md §1 Step 1) — 개념 자체가 없는 쪽이 값만 없는
+                    # 쪽보다 더 심각한데 예전엔 더 관대하게(제외 안 함) 처리되고 있었다.
                     think_trace.append(
-                        f"{table}({category})에는 {concept} 개념 자체가 없어 이 조건은 건너뜀"
+                        f"{table}({category})에는 {concept} 정보 자체가 제공되지 않아 "
+                        f"'{category}' 카테고리를 제외"
                     )
+                    if subject_scoped:
+                        excluded_categories.add(category)
                 elif reason == "value_not_in_table":
                     think_trace.append(
                         f"'{obj}'는 {table}({category})에 없는 값이라 '{category}' 카테고리를 결과에서 제외"
@@ -487,7 +535,7 @@ class QueryParser(Agent):
             # 문자열이 그대로 LLM에 들어간다 (qp_task9_json.md §4).
             cp_query = self.prompt.replace('{{retry_hint}}', '' if attempt == 1 else RETRY_HINT)
             cp_query = cp_query.replace('{{query}}', query_json)
-            last_result = super().query(cp_query)
+            last_result = self._call_llm(cp_query)
             # dict.get(key, default)는 키가 "없을 때"만 default를 쓴다 — 키는 있는데 값이
             # None(예: {"content": None})이면 그대로 None이 나온다. 아래 로깅에서
             # len(content)/content[:800]를 쓰므로 content는 항상 str이어야 한다.
@@ -499,6 +547,10 @@ class QueryParser(Agent):
                 # 깨지므로, 형식이 안 맞는 응답으로 간주하고 재시도 루프로 넘긴다.
                 parsed = None
             if parsed is not None:
+                # Step 4(qp_task12_unanswerable.md §6) — 파싱 성공 시에도 응답 길이를
+                # 남긴다. 500자 안팎이면 서버 변동, 3000자 이상이면 장문 출력 문제로 본다
+                # (지연이 모델 장문 출력 때문인지 서버 변동 때문인지 구분하는 근거).
+                logger.info(f"QueryParser 응답 {len(content)}자 ({attempt}회차)")
                 if attempt > 1:
                     logger.info(f"QueryParser JSON 파싱 성공 ({attempt}회차)")
                 break
@@ -575,6 +627,41 @@ class QueryParser(Agent):
         # 본다(교차검증에서 지적됨). 이 시점 이후로는 tables가 "실제로 조회할 카테고리"다.
         if excluded_categories:
             tables = {k: v for k, v in tables.items() if k not in excluded_categories}
+
+        # 5.5) 답할 대상이 하나도 안 남으면 컷한다 (qp_task12_unanswerable.md §1 Step 2).
+        # "구멍 A" — LLM이 category 자체를 못 뽑음(예: "외계채권ㅋㅋ") — triples가 비어
+        # 온톨로지 검증(2단계)까지 통째로 건너뛰고도 answerable: True로 새어나갔다.
+        # "구멍 B" — category는 있었으나 이 시점 위의 not_in_table/value_not_in_table
+        # 판정으로 전부 제외됨(예: "위험등급 1등급인 해외ETF"). 두 경우 다 "답할 재료가
+        # 하나도 없는데 answerable: True"라는 같은 모순이라 여기서 한 번에 막는다.
+        # 반드시 excluded_categories를 tables에 반영한 *뒤*에 검사해야 Step 1의 효과가 걸린다.
+        if not tables:
+            if not categories:
+                # 구멍 A
+                reason = "질문에서 조회할 수 있는 상품군을 찾지 못했습니다."
+                suggestion = ("국내채권, 국내ETF, 해외ETF, 공모펀드 중 어느 상품군을 찾으시나요? "
+                              "해당 상품군에 없는 조건(예: 해외ETF의 위험등급)이 포함됐을 수도 있습니다.")
+            else:
+                # 구멍 B — 어떤 조건 때문에 제외됐는지가 이미 위 think_trace에 남아 있으므로
+                # 그대로 재사용해 역질문 품질을 높인다(§4.1, 선택사항이지만 비용이 적어 적용).
+                reason = "질문에 포함된 조건이 요청하신 상품군에는 적용되지 않습니다."
+                # not_in_table 로그는 "...카테고리를 제외", value_not_in_table 로그는
+                # "...카테고리를 결과에서 제외"라 문구가 살짝 달라서 "제외"만으로 넓게 잡는다.
+                exclusion_notes = [t for t in think_trace if "제외" in t]
+                if exclusion_notes:
+                    suggestion = f"{exclusion_notes[-1]}. 다른 상품군으로 다시 질문해 주시겠어요?"
+                else:
+                    suggestion = ("해당 상품군에 없는 조건이 포함됐을 수도 있습니다. "
+                                  "다른 상품군으로 다시 질문해 주시겠어요?")
+            think_trace.append("조회 가능한 카테고리가 없어 답변 불가로 판정")
+            return {
+                "content": f"{reason} {suggestion}",
+                "id": call_id,
+                "answerable": False,
+                "reason": reason,
+                "suggestion": suggestion,
+                "think_trace": think_trace,
+            }
 
         # 6) 부등호 질의 전개 (qp_spec.md §4.3) — best-effort.
         # numerical_verification 키는 LLM이 자유롭게 붙이므로 개념명을 알 수 없다.
