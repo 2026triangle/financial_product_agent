@@ -1,0 +1,877 @@
+[
+  {
+    "column_name": "itm_no",
+    "column_korean_name": "펀드표준코드 (ISIN)",
+    "data_type": "VARCHAR(20)",
+    "description": "개별 클래스 펀드의 고유 국제표준코드(Primary Key, ISIN, 예: KR5116450039)입니다.",
+    "synonyms": [
+      "펀드코드",
+      "ISIN",
+      "표준코드",
+      "펀드식별자",
+      "KR5코드"
+    ],
+    "sample_values": [
+      "KR5116450039",
+      "KR5149450025"
+    ],
+    "sample_queries": [
+      "펀드 ISIN 코드 알려줘",
+      "KR5116450039 펀드 상세 정보 조회"
+    ]
+  },
+  {
+    "column_name": "itm_nm",
+    "column_korean_name": "펀드정식명칭 (공식 풀네임)",
+    "data_type": "VARCHAR(255)",
+    "description": "운용사, 펀드 전략, 투자 유형 및 클래스(Class A, C, C-e, Pe 등)가 모두 포함된 펀드 공식 풀네임입니다.",
+    "synonyms": [
+      "펀드명",
+      "정식명칭",
+      "풀네임",
+      "공식 펀드명",
+      "펀드 이름"
+    ],
+    "sample_values": [
+      "신한BNPP차이나1호증권자투자신탁[주식]ClassC1",
+      "미래에셋글로벌그레이트컨슈머증권자투자신탁 1(주식)종류C-e"
+    ],
+    "sample_queries": [
+      "신한 차이나 펀드 찾아줘",
+      "미래에셋 글로벌 컨슈머 펀드 풀네임 알려줘",
+      "에셋플러스 리치투게더 펀드 공식 명칭"
+    ]
+  },
+  {
+    "column_name": "itm_abrv_nm",
+    "column_korean_name": "펀드약어명 (단축 표기명)",
+    "data_type": "VARCHAR(100)",
+    "description": "HTS/MTS 화면 표기 및 검색용 단축 펀드명(예: 신한BNPP차이나1[주식]ClassC1, 미래에셋글로벌컨슈머(주식)C-e)입니다.",
+    "synonyms": [
+      "약어명",
+      "단축명",
+      "MTS 펀드명",
+      "약칭"
+    ],
+    "sample_values": [
+      "삼성1.5년매칭형증권투자제1호[채권]C-P",
+      "알리안츠멀티파재F",
+      "한국밸류10년투자배당투자(채권혼합)AE"
+    ],
+    "sample_queries": [
+      "차이나1 ClassC1 약어 검색",
+      "글로벌컨슈머 C-e 클래스 약칭"
+    ]
+  },
+  {
+    "column_name": "itm_eng_nm",
+    "column_korean_name": "펀드영문명",
+    "data_type": "VARCHAR(255)",
+    "description": "펀드 공식 영문 명칭입니다.",
+    "synonyms": [
+      "영문명",
+      "펀드 영문 이름"
+    ],
+    "sample_values": [
+      "삼성1.5년매칭형증권투자신탁제1호[채권]_C-P",
+      "알리안츠다이나믹멀티에셋증권투자신탁[주식혼합_파생재간접형] Class C(F)",
+      "한국밸류10년투자 배당증권투자신탁(채권혼합)종류A-E"
+    ],
+    "sample_queries": [
+      "펀드 영문 풀네임"
+    ]
+  },
+  {
+    "column_name": "itm_eabrv_nm",
+    "column_korean_name": "펀드약어영문명",
+    "data_type": "VARCHAR(100)",
+    "description": "펀드 단축 영문 명칭입니다.",
+    "synonyms": [
+      "단축 영문명"
+    ],
+    "sample_values": [
+      "MIRAE G2INNOVATOR_C1",
+      "MIRAE G2 INNOVATOR F"
+    ],
+    "sample_queries": [
+      "펀드 영문 약어명"
+    ]
+  },
+  {
+    "column_name": "std_itm_no",
+    "column_korean_name": "표준상품코드",
+    "data_type": "VARCHAR(20)",
+    "description": "표준 금융상품 식별코드입니다.",
+    "synonyms": [
+      "표준코드"
+    ],
+    "sample_values": [
+      "KR5116450039"
+    ],
+    "sample_queries": [
+      "표준상품코드"
+    ]
+  },
+  {
+    "column_name": "ksd_itm_no",
+    "column_korean_name": "예탁원코드 (자펀드 예탁원코드)",
+    "data_type": "VARCHAR(20)",
+    "description": "한국예탁결제원(KSD) 개별 자펀드 등록코드입니다.",
+    "synonyms": [
+      "예탁원코드",
+      "KSD코드",
+      "자펀드코드"
+    ],
+    "sample_values": [
+      "511645"
+    ],
+    "sample_queries": [
+      "예탁원 펀드 코드"
+    ]
+  },
+  {
+    "column_name": "rptt_ksd_itm_no",
+    "column_korean_name": "대표예탁원코드 (모펀드 식별키)",
+    "data_type": "VARCHAR(20)",
+    "description": "모펀드(대표 펀드)의 고유 예탁원 식별코드입니다. 동일한 모펀드에 연결된 여러 수수료 클래스(A, C, C-e, Pe 등)를 묶어주는 상위 조인키입니다.",
+    "synonyms": [
+      "모펀드코드",
+      "대표예탁원코드",
+      "대표코드",
+      "클래스 묶음키",
+      "Master 펀드코드"
+    ],
+    "sample_values": [
+      "511640",
+      "514940"
+    ],
+    "sample_queries": [
+      "이 모펀드에 속한 다른 클래스(A, C, 온라인) 펀드들 전부 보여줘",
+      "대표 모펀드 예탁원 코드로 연결된 펀드 조회"
+    ]
+  },
+  {
+    "column_name": "fss_itm_no",
+    "column_korean_name": "금융감독원 DART 공시코드",
+    "data_type": "VARCHAR(50)",
+    "description": "금융감독원 DART 전자공시시스템 펀드 고유 등록 식별코드입니다.",
+    "synonyms": [
+      "금감원코드",
+      "DART코드",
+      "공시코드"
+    ],
+    "sample_values": [
+      "0010173C9824",
+      "0011644C0164",
+      "0010173C7109"
+    ],
+    "sample_queries": [
+      "금감원 DART 펀드 공시 코드"
+    ]
+  },
+  {
+    "column_name": "kofia_fd_ccd",
+    "column_korean_name": "금융투자협회 분류코드",
+    "data_type": "VARCHAR(50)",
+    "description": "금융투자협회 전자공시 포털 펀드 표준 분류코드입니다.",
+    "synonyms": [
+      "금투협코드",
+      "협회분류코드"
+    ],
+    "sample_values": [
+      "101010"
+    ],
+    "sample_queries": [
+      "금투협 협회 표준 분류코드"
+    ]
+  },
+  {
+    "column_name": "mtco_itm_no",
+    "column_korean_name": "운용사 내부 종목코드",
+    "data_type": "VARCHAR(50)",
+    "description": "자산운용사 내부 펀드 관리 전산코드입니다.",
+    "synonyms": [
+      "운용사내부코드"
+    ],
+    "sample_values": [
+      "M001"
+    ],
+    "sample_queries": [
+      "운용사 내부 펀드 관리번호"
+    ]
+  },
+  {
+    "column_name": "or_co_xtn_itt_cd",
+    "column_korean_name": "운용사 대외기관코드",
+    "data_type": "VARCHAR(20)",
+    "description": "자산운용사의 8자리 표준 대외기관 식별코드(예: 00040010: 미래에셋자산운용, 00020054: 신한자산운용 등)입니다.",
+    "synonyms": [
+      "운용사기관코드",
+      "대외기관코드"
+    ],
+    "sample_values": [
+      "00040010",
+      "00020054"
+    ],
+    "sample_queries": [
+      "운용사 대외기관 표준 8자리 코드"
+    ]
+  },
+  {
+    "column_name": "trusc_xtn_itt_cd",
+    "column_korean_name": "수탁회사 대외기관코드",
+    "data_type": "VARCHAR(20)",
+    "description": "펀드 자산을 보관/관리하는 수탁 신탁은행(KB국민은행, 신한은행, 하나은행 등)의 8자리 표준 기관코드입니다.",
+    "synonyms": [
+      "수탁은행코드",
+      "신탁사코드",
+      "수탁사"
+    ],
+    "sample_values": [
+      "00020054",
+      "00010004"
+    ],
+    "sample_queries": [
+      "펀드 자산 보관 신탁 수탁은행 기관코드"
+    ]
+  },
+  {
+    "column_name": "bmrk_nm",
+    "column_korean_name": "벤치마크 지수명 (비교지수)",
+    "data_type": "VARCHAR(255)",
+    "description": "펀드의 운용 성과를 평가하는 기준 비교 벤치마크 지수(예: KOSPI 200, MSCI CHINA 85% + Call 15%, KIS 종합채권 등)입니다.",
+    "synonyms": [
+      "벤치마크",
+      "BM",
+      "비교지수",
+      "기준지수",
+      "Benchmark"
+    ],
+    "sample_values": [
+      "종합채권 3개월~1년",
+      "MSCI ACWI CR 75% + KIS채권종합01Y 25%",
+      "KOSPI200 25% + 종합채권01Y 75%"
+    ],
+    "sample_queries": [
+      "코스피200 벤치마크 펀드 찾아줘",
+      "MSCI 중국 지수 벤치마크 펀드",
+      "벤치마크 대비 초과 성과 펀드"
+    ]
+  },
+  {
+    "column_name": "bmrk_eng_nm",
+    "column_korean_name": "벤치마크 영문명",
+    "data_type": "VARCHAR(255)",
+    "description": "벤치마크 지수 영문 명칭입니다.",
+    "synonyms": [
+      "벤치마크 영문"
+    ],
+    "sample_values": [
+      "채권종합 3M~1Y",
+      "MSCI ACWI CR 75% + KIS Bond Index 01Y 25%",
+      "KOSPI200 25% + KAP Bond Index 01Y 75%"
+    ],
+    "sample_queries": [
+      "벤치마크 영문명"
+    ]
+  },
+  {
+    "column_name": "curr_cd",
+    "column_korean_name": "기준통화코드",
+    "data_type": "VARCHAR(20)",
+    "description": "펀드 기준가격 산출 통화(KRW: 원화, USD: 미국 달러)입니다.",
+    "synonyms": [
+      "기준통화",
+      "원화펀드",
+      "외화펀드",
+      "달러펀드"
+    ],
+    "sample_values": [
+      "KRW",
+      "USD"
+    ],
+    "sample_queries": [
+      "원화 펀드야 달러 펀드야?",
+      "외화 USD 기준가 펀드"
+    ]
+  },
+  {
+    "column_name": "exchdg_yn",
+    "column_korean_name": "환헤지적용여부 (H/UH 환노출)",
+    "data_type": "VARCHAR(5)",
+    "description": "해외 투자 펀드의 환위험 헷지 전략 여부(Y: 환헤지형/H, N: 환노출/언헤지/UH, NaN: 국내투자 해당없음)입니다.",
+    "synonyms": [
+      "환헤지",
+      "환노출",
+      "언헤지",
+      "H형",
+      "UH형",
+      "환율변동반영",
+      "환위험헤지",
+      "Hedge"
+    ],
+    "sample_values": [
+      "Y",
+      "N"
+    ],
+    "sample_queries": [
+      "환헤지(H) 되는 미국 펀드 찾아줘",
+      "환노출(UH) 해외 펀드 목록",
+      "환율 상승에 베팅하는 환노출형 펀드",
+      "환헤지 적용 여부 확인해줘"
+    ]
+  },
+  {
+    "column_name": "ovrs_fd_desc",
+    "column_korean_name": "해외펀드구분 (국내/해외/혼합)",
+    "data_type": "VARCHAR(50)",
+    "description": "펀드의 투자 지역 대분류(국내: 국내자산 투자, 해외: 해외자산 투자, 국내외혼합)입니다.",
+    "synonyms": [
+      "해외펀드",
+      "국내펀드",
+      "투자지역구분",
+      "국내외혼합"
+    ],
+    "sample_values": [
+      "해외",
+      "국내",
+      "국내외혼합"
+    ],
+    "sample_queries": [
+      "해외에 투자하는 공모펀드 찾아줘",
+      "국내 주식/채권 펀드 목록"
+    ]
+  },
+  {
+    "column_name": "fd_ivst_rgn_desc",
+    "column_korean_name": "투자지역상세 (국가/대륙)",
+    "data_type": "VARCHAR(50)",
+    "description": "펀드가 주로 투자하는 세부 국가 및 대륙 지역(글로벌, 국내, 미국/북미, 중국, 유럽, 신흥국, 아시아 등)입니다.",
+    "synonyms": [
+      "투자지역",
+      "투자국가",
+      "미국펀드",
+      "중국펀드",
+      "인도펀드",
+      "베트남펀드",
+      "유럽펀드",
+      "글로벌펀드"
+    ],
+    "sample_values": [
+      "국내",
+      "글로벌",
+      "아시아"
+    ],
+    "sample_queries": [
+      "미국에 투자하는 펀드 추천해줘",
+      "중국 주식 펀드 목록",
+      "인도 베트남 신흥국 펀드",
+      "유럽 선진국 투자 펀드"
+    ]
+  },
+  {
+    "column_name": "or_attr_desc",
+    "column_korean_name": "운용자산유형 (주식형/채권형/혼합형)",
+    "data_type": "VARCHAR(50)",
+    "description": "펀드의 핵심 투자 대상 자산 유형(주식형, 채권형, 주식혼합형, 채권혼합형, MMF, 재간접형, 파생형 등)입니다.",
+    "synonyms": [
+      "자산유형",
+      "주식형펀드",
+      "채권형펀드",
+      "혼합형펀드",
+      "MMF",
+      "재간접펀드",
+      "단기자금",
+      "파생상품형"
+    ],
+    "sample_values": [
+      "주식형",
+      "채권형",
+      "혼합형",
+      "MMF",
+      "재간접형"
+    ],
+    "sample_queries": [
+      "주식형 펀드 찾아줘",
+      "안전한 채권형 펀드 추천",
+      "MMF 단기자금 펀드 목록",
+      "글로벌 재간접 펀드"
+    ]
+  },
+  {
+    "column_name": "fd_estb_ctry_cd",
+    "column_korean_name": "펀드설립국가코드",
+    "data_type": "VARCHAR(10)",
+    "description": "펀드가 설립 등록된 3자리 국가코드(000: 국내설립 역내펀드, 410: 해외설립 역외펀드)입니다.",
+    "synonyms": [
+      "설립국가",
+      "역내펀드",
+      "역외펀드"
+    ],
+    "sample_values": [
+      "0.0",
+      "410.0"
+    ],
+    "sample_queries": [
+      "국내 설립 역내 펀드야?"
+    ]
+  },
+  {
+    "column_name": "fd_set_pcd",
+    "column_korean_name": "펀드설정유형코드 (추가형/단위형)",
+    "data_type": "VARCHAR(20)",
+    "description": "펀드 설정 방식(10: 수시 추가 매수가 가능한 추가형, 20: 모집 기간에만 가입하는 단위형)입니다.",
+    "synonyms": [
+      "추가형",
+      "단위형",
+      "수시입출",
+      "모집형"
+    ],
+    "sample_values": [
+      "20",
+      "10",
+      "0"
+    ],
+    "sample_queries": [
+      "수시로 추가 불입 가능한 추가형 펀드"
+    ]
+  },
+  {
+    "column_name": "prvo_pbff_desc",
+    "column_korean_name": "공모/사모구분",
+    "data_type": "VARCHAR(50)",
+    "description": "일반 대중 대상 모집 여부(공모)입니다.",
+    "synonyms": [
+      "공모펀드",
+      "사모펀드",
+      "공모"
+    ],
+    "sample_values": [
+      "공모"
+    ],
+    "sample_queries": [
+      "공모 펀드 목록"
+    ]
+  },
+  {
+    "column_name": "prvo_fd_desc",
+    "column_korean_name": "사모펀드구분",
+    "data_type": "VARCHAR(50)",
+    "description": "사모펀드 구분 속성입니다.",
+    "synonyms": [
+      "사모구분"
+    ],
+    "sample_values": [
+      "일반공모"
+    ],
+    "sample_queries": [
+      "사모 여부 확인"
+    ]
+  },
+  {
+    "column_name": "zrin_fd_ivst_risk_gcd",
+    "column_korean_name": "위험등급코드 (제로인 평가)",
+    "data_type": "VARCHAR(10)",
+    "description": "펀드평가사 제로인 기준 투자위험등급(1: 매우높은위험, 2: 높은위험, 3: 다소높은위험, 4: 보통위험, 5: 낮은위험, 6: 매우낮은위험)입니다.",
+    "synonyms": [
+      "위험등급",
+      "제로인위험등급",
+      "1등급 초고위험",
+      "6등급 초저위험",
+      "투자위험도"
+    ],
+    "sample_values": [
+      "1",
+      "2",
+      "4",
+      "6"
+    ],
+    "sample_queries": [
+      "1등급 초고위험 주식 펀드",
+      "5등급 또는 6등급 안전한 저위험 펀드 추천해줘"
+    ]
+  },
+  {
+    "column_name": "zrin_fd_ivst_risk_grd_nm",
+    "column_korean_name": "위험등급명 (안전도/위험수준)",
+    "data_type": "VARCHAR(50)",
+    "description": "펀드 위험 수준 한글 명칭(매우 높은 위험, 높은 위험, 다소 높은 위험, 보통 위험, 낮은 위험, 매우 낮은 위험)입니다.",
+    "synonyms": [
+      "위험등급명",
+      "안전한 펀드",
+      "위험도 낮은 펀드",
+      "초저위험 펀드",
+      "고위험 펀드",
+      "안정형 펀드",
+      "매우 낮은 위험"
+    ],
+    "sample_values": [
+      "매우 높은 위험",
+      "높은 위험",
+      "보통 위험",
+      "낮은 위험"
+    ],
+    "sample_queries": [
+      "낮은 위험 등급의 안정적인 펀드 찾아줘",
+      "원금 손실 걱정 적은 매우 낮은 위험 펀드",
+      "매우 높은 위험 등급 주식형 펀드"
+    ]
+  },
+  {
+    "column_name": "sale_yn",
+    "column_korean_name": "판매상태 (신규가입가능여부)",
+    "data_type": "VARCHAR(50)",
+    "description": "현재 신규 가입 및 매수가 가능한 상태(판매중)인지 마감된 상태(판매완료/종료)인지 나타냅니다.",
+    "synonyms": [
+      "판매상태",
+      "판매중",
+      "판매완료",
+      "신규가입가능",
+      "가입가능펀드"
+    ],
+    "sample_values": [
+      "판매중",
+      "판매완료"
+    ],
+    "sample_queries": [
+      "지금 신규 가입 가능한 판매중 펀드만 보여줘",
+      "판매 마감된 펀드 제외해줘"
+    ]
+  },
+  {
+    "column_name": "thco_sale_yn",
+    "column_korean_name": "당사(미래에셋)판매여부",
+    "data_type": "VARCHAR(5)",
+    "description": "미래에셋증권 영업점 또는 MTS/HTS 온라인에서 실제로 가입/매수 가능한 펀드 여부(Y: 당사판매, NaN: 타사전용)입니다.",
+    "synonyms": [
+      "미래에셋판매",
+      "당사판매",
+      "미래에셋에서 살 수 있는 펀드"
+    ],
+    "sample_values": [
+      "Y"
+    ],
+    "sample_queries": [
+      "미래에셋증권에서 매수할 수 있는 펀드만 찾아줘",
+      "당사 판매 가능 펀드 목록"
+    ]
+  },
+  {
+    "column_name": "frc_bpr_itm_yn",
+    "column_korean_name": "외화기준가여부 (외화펀드)",
+    "data_type": "VARCHAR(5)",
+    "description": "달러(USD) 등 외화로 기준가격이 산출되는 펀드인지 여부(Y: 외화기준가, N: 원화기준가)입니다.",
+    "synonyms": [
+      "외화기준가",
+      "달러가입",
+      "외화펀드"
+    ],
+    "sample_values": [
+      "N",
+      "Y"
+    ],
+    "sample_queries": [
+      "외화(USD)로 가입하는 펀드 찾아줘"
+    ]
+  },
+  {
+    "column_name": "hdge_fd_yn",
+    "column_korean_name": "헤지펀드여부",
+    "data_type": "VARCHAR(5)",
+    "description": "사모전문 헤지펀드 여부(N)입니다.",
+    "synonyms": [
+      "헤지펀드"
+    ],
+    "sample_values": [
+      "N"
+    ],
+    "sample_queries": [
+      "헤지펀드 여부"
+    ]
+  },
+  {
+    "column_name": "ofsfd_yn",
+    "column_korean_name": "역외펀드여부",
+    "data_type": "VARCHAR(5)",
+    "description": "해외 법률에 따라 설립된 역외 펀드 여부(N)입니다.",
+    "synonyms": [
+      "역외펀드"
+    ],
+    "sample_values": [
+      "N"
+    ],
+    "sample_queries": [
+      "역외 펀드 여부"
+    ]
+  },
+  {
+    "column_name": "pers_corp_desc",
+    "column_korean_name": "개인/법인구분 (가입대상)",
+    "data_type": "VARCHAR(50)",
+    "description": "가입 대상 고객 구분(전체: 개인/법인 모두 가능, 개인전용: 개인만 가능, 법인전용: 법인 전용 클래스)입니다.",
+    "synonyms": [
+      "개인전용",
+      "법인전용",
+      "가입대상",
+      "법인펀드",
+      "개인펀드"
+    ],
+    "sample_values": [
+      "전체",
+      "개인전용",
+      "법인전용"
+    ],
+    "sample_queries": [
+      "개인 투자자가 가입할 수 있는 펀드",
+      "법인 전용 펀드 목록"
+    ]
+  },
+  {
+    "column_name": "pfiv_sale_cntl_tcd",
+    "column_korean_name": "전문투자자판매제어코드",
+    "data_type": "VARCHAR(20)",
+    "description": "가입 자격 제한 코드(00: 일반투자자 가입 가능, 01/02: 전문투자자 전용)입니다.",
+    "synonyms": [
+      "일반투자자가능",
+      "전문투자자전용"
+    ],
+    "sample_values": [
+      "00",
+      "01"
+    ],
+    "sample_queries": [
+      "일반 개인 투자자도 가입 가능한 펀드"
+    ]
+  },
+  {
+    "column_name": "int_dvd_desc",
+    "column_korean_name": "이자/배당구분 (수익금 지급방식)",
+    "data_type": "VARCHAR(50)",
+    "description": "펀드 결산 수익금 지급 방식(재투자, 현금지급 등)입니다.",
+    "synonyms": [
+      "재투자",
+      "현금지급",
+      "분배금지급",
+      "결산방식"
+    ],
+    "sample_values": [
+      "배당"
+    ],
+    "sample_queries": [
+      "배당금 현금으로 주는 펀드",
+      "수익금 자동 재투자 펀드"
+    ]
+  },
+  {
+    "column_name": "fd_nast_suma",
+    "column_korean_name": "순자산총액 (설정액/펀드규모)",
+    "data_type": "NUMERIC(25, 4)",
+    "description": "해당 펀드 클래스의 총 순자산 설정액 규모(원 단위)입니다. 펀드 유동성, 자금 유입 규모 및 안정성을 파악하는 핵심 지표입니다.",
+    "synonyms": [
+      "설정액",
+      "순자산총액",
+      "펀드규모",
+      "AUM",
+      "사람들이 많이 가입한 펀드",
+      "대형 펀드",
+      "자금 유입 많은 펀드",
+      "인기 펀드",
+      "규모 큰 펀드",
+      "운용규모"
+    ],
+    "sample_values": [
+      "77291400582.0",
+      "71147860091.0",
+      "600482482202.0"
+    ],
+    "sample_queries": [
+      "순자산 1000억 이상 대형 공모펀드 추천",
+      "사람들이 제일 많이 가입한 펀드 찾아줘",
+      "설정액 규모 큰 펀드 순서대로 정렬",
+      "순자산총액 규모 1위 펀드",
+      "안정적으로 돈이 많이 몰린 대형 펀드"
+    ]
+  },
+  {
+    "column_name": "fd_wk1_ern_r",
+    "column_korean_name": "1주일 수익률",
+    "data_type": "NUMERIC(10, 4)",
+    "description": "최근 1주일간의 기준가 누적 수익률(%)입니다.",
+    "synonyms": [
+      "1주 수익률",
+      "주간 수익률"
+    ],
+    "sample_values": [
+      "2.55",
+      "-0.82",
+      "2.04"
+    ],
+    "sample_queries": [
+      "최근 일주일간 수익률"
+    ]
+  },
+  {
+    "column_name": "fd_mm1_ern_r",
+    "column_korean_name": "1개월 수익률",
+    "data_type": "NUMERIC(10, 4)",
+    "description": "최근 1개월(30일)간의 기준가 누적 수익률(%)입니다.",
+    "synonyms": [
+      "1개월 수익률",
+      "한달 수익률",
+      "최근 30일 성과"
+    ],
+    "sample_values": [
+      "1.18",
+      "1.16",
+      "1.86"
+    ],
+    "sample_queries": [
+      "최근 1개월 수익률 높은 펀드 찾아줘",
+      "한달 성과 상위 펀드"
+    ]
+  },
+  {
+    "column_name": "fd_mm3_ern_r",
+    "column_korean_name": "3개월 수익률",
+    "data_type": "NUMERIC(10, 4)",
+    "description": "최근 3개월(90일)간의 기준가 누적 수익률(%)입니다.",
+    "synonyms": [
+      "3개월 수익률",
+      "분기 성과"
+    ],
+    "sample_values": [
+      "16.29",
+      "12.78",
+      "-16.82"
+    ],
+    "sample_queries": [
+      "최근 3개월 단기 성과 좋은 펀드"
+    ]
+  },
+  {
+    "column_name": "fd_mm6_ern_r",
+    "column_korean_name": "6개월 수익률",
+    "data_type": "NUMERIC(10, 4)",
+    "description": "최근 6개월(180일)간의 기준가 누적 수익률(%)입니다.",
+    "synonyms": [
+      "6개월 수익률",
+      "반기 수익률"
+    ],
+    "sample_values": [
+      "25.97",
+      "11.72",
+      "-23.75"
+    ],
+    "sample_queries": [
+      "최근 6개월간 수익률 상위 펀드"
+    ]
+  },
+  {
+    "column_name": "fd_mm18_ern_r",
+    "column_korean_name": "18개월 수익률",
+    "data_type": "NUMERIC(10, 4)",
+    "description": "최근 18개월간의 기준가 누적 수익률(%)입니다.",
+    "synonyms": [
+      "18개월 수익률"
+    ],
+    "sample_values": [
+      "47.08",
+      "28.54",
+      "2.54"
+    ],
+    "sample_queries": [
+      "18개월 누적 수익률"
+    ]
+  },
+  {
+    "column_name": "fd_yr1_ern_r",
+    "column_korean_name": "1년 수익률 (연간 운용성과)",
+    "data_type": "NUMERIC(10, 4)",
+    "description": "최근 1년간(365일)의 기준가 누적 운용 성과 수익률(%)입니다. 펀드의 1년 성과를 비교하는 핵심 지표입니다.",
+    "synonyms": [
+      "1년 수익률",
+      "연간 수익률",
+      "1년 성과",
+      "작년 수익률",
+      "최근 1년 동안 오른 정도",
+      "수익률 1위 펀드",
+      "성과 좋은 펀드",
+      "수익률 높은 펀드",
+      "대박 난 펀드",
+      "1년 누적 성과"
+    ],
+    "sample_values": [
+      "38.17",
+      "33.73",
+      "-22.85"
+    ],
+    "sample_queries": [
+      "최근 1년간 제일 수익률 높았던 펀드 뭐야?",
+      "1년 수익률 20% 이상 고수익 펀드 추천",
+      "작년에 가장 많이 오른 펀드 찾아줘",
+      "1년 동안 제일 대박 난 주식형 펀드",
+      "1년 성과 상위 10개 펀드 목록"
+    ]
+  },
+  {
+    "column_name": "fd_yr2_ern_r",
+    "column_korean_name": "2년 수익률",
+    "data_type": "NUMERIC(10, 4)",
+    "description": "최근 2년간의 기준가 누적 운용 성과 수익률(%)입니다.",
+    "synonyms": [
+      "2년 수익률",
+      "2년 성과"
+    ],
+    "sample_values": [
+      "43.25",
+      "48.23",
+      "0.15"
+    ],
+    "sample_queries": [
+      "2년 누적 수익률 우수한 펀드"
+    ]
+  },
+  {
+    "column_name": "fd_yr3_ern_r",
+    "column_korean_name": "3년 수익률 (장기 성과)",
+    "data_type": "NUMERIC(10, 4)",
+    "description": "최근 3년간의 장기 운용 성과를 평가하는 누적 수익률(%)입니다.",
+    "synonyms": [
+      "3년 수익률",
+      "3년 성과",
+      "장기 성과 우수 펀드",
+      "3년 누적 수익률"
+    ],
+    "sample_values": [
+      "60.31",
+      "95.24",
+      "-5.11"
+    ],
+    "sample_queries": [
+      "3년 장기 성과가 꾸준히 좋은 펀드 추천해줘",
+      "3년 수익률 40% 넘는 우수 펀드",
+      "장기 투자 추천 펀드"
+    ]
+  },
+  {
+    "column_name": "fd_yr5_ern_r",
+    "column_korean_name": "5년 수익률 (초장기 트랙레코드)",
+    "data_type": "NUMERIC(10, 4)",
+    "description": "최근 5년간의 초장기 트랙레코드 누적 수익률(%)입니다.",
+    "synonyms": [
+      "5년 수익률",
+      "5년 성과",
+      "초장기 성과",
+      "5년 트랙레코드"
+    ],
+    "sample_values": [
+      "49.37",
+      "127.97",
+      "-48.61"
+    ],
+    "sample_queries": [
+      "5년 장기 투자 성과 우수 펀드",
+      "5년 누적 수익률 순위"
+    ]
+  }
+]

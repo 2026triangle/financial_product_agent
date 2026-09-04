@@ -1,0 +1,181 @@
+{
+  "file": "PRFD01N001_공모펀드마스터_20260711_datarows.xlsx",
+  "rows": 95619,
+  "cols": 45,
+  "vocab": {
+    "curr_cd": {
+      "n_unique": 2,
+      "missing_rate": 0.0,
+      "values": {
+        "KRW": 95046,
+        "USD": 572
+      }
+    },
+    "exchdg_yn": {
+      "n_unique": 2,
+      "missing_rate": 0.3113,
+      "values": {
+        "Y": 44987,
+        "N": 20870
+      }
+    },
+    "fd_estb_ctry_cd": {
+      "n_unique": 2,
+      "missing_rate": 0.0007,
+      "values": {
+        "0.0": 92838,
+        "410.0": 2715
+      }
+    },
+    "fd_ivst_rgn_desc": {
+      "n_unique": 7,
+      "missing_rate": 0.0007,
+      "values": {
+        "글로벌": 42875,
+        "국내": 33223,
+        "아시아": 10265,
+        "남미/북미": 4984,
+        "이머징/브릭스": 2261,
+        "유럽": 1846,
+        "중동/아프리카": 99
+      }
+    },
+    "fd_set_pcd": {
+      "n_unique": 3,
+      "missing_rate": 0.0,
+      "values": {
+        "10.0": 91354,
+        "20.0": 3806,
+        "0.0": 458
+      }
+    },
+    "frc_bpr_itm_yn": {
+      "n_unique": 2,
+      "missing_rate": 0.0,
+      "values": {
+        "N": 95046,
+        "Y": 572
+      }
+    },
+    "int_dvd_desc": {
+      "n_unique": 2,
+      "missing_rate": 0.0007,
+      "values": {
+        "배당": 95543,
+        "이자": 10
+      }
+    },
+    "itm_eabrv_nm": {
+      "n_unique": 14,
+      "missing_rate": 0.9982,
+      "values": {
+        "KB China A-share Sec": 59,
+        "MIRAE G2INNOVATOR_Ce": 13,
+        "MIRAE G2INNOVATOR_C1": 12,
+        "MIRAE G2 INNOVATOR F": 12,
+        "MIRAE G2INNOVATOR_C2": 12,
+        "MIRAE GL-GROWTH F": 10,
+        "MIRAE GL-GROWTH A": 10,
+        "DWS DeutschEquity C1": 8,
+        "DWS DeutschEquity A": 8,
+        "DWS DeutschEquity C3": 7,
+        "DWS DeutschEquity C4": 7,
+        "DWS DeutschEquity C2": 7,
+        "Dream auto plus": 6,
+        "배당": 1
+      }
+    },
+    "or_attr_desc": {
+      "n_unique": 11,
+      "missing_rate": 0.0007,
+      "values": {
+        "주식형": 36338,
+        "재간접": 30243,
+        "채권혼합": 8964,
+        "채권형": 8344,
+        "06": 5436,
+        "주식혼합": 2782,
+        "MMF": 1532,
+        "혼합자산": 1424,
+        "특별자산": 412,
+        "임대형": 69,
+        "대출형": 9
+      }
+    },
+    "ovrs_fd_desc": {
+      "n_unique": 3,
+      "missing_rate": 0.0007,
+      "values": {
+        "해외": 51628,
+        "국내": 33107,
+        "국내외혼합": 10818
+      }
+    },
+    "pers_corp_desc": {
+      "n_unique": 3,
+      "missing_rate": 0.0007,
+      "values": {
+        "해당없음": 73054,
+        "개인": 17643,
+        "법인": 4856
+      }
+    },
+    "pfiv_sale_cntl_tcd": {
+      "n_unique": 3,
+      "missing_rate": 0.0007,
+      "values": {
+        "0.0": 95014,
+        "1.0": 430,
+        "2.0": 109
+      }
+    },
+    "prvo_fd_desc": {
+      "n_unique": 2,
+      "missing_rate": 0.0007,
+      "values": {
+        "해당없음": 95451,
+        "일반사모(2015년전)": 102
+      }
+    },
+    "prvo_pbff_desc": {
+      "n_unique": 2,
+      "missing_rate": 0.0007,
+      "values": {
+        "공모": 95451,
+        "사모": 102
+      }
+    },
+    "sale_yn": {
+      "n_unique": 2,
+      "missing_rate": 0.0,
+      "values": {
+        "판매중": 76318,
+        "판매완료": 19300
+      }
+    },
+    "zrin_fd_ivst_risk_gcd": {
+      "n_unique": 6,
+      "missing_rate": 0.1926,
+      "values": {
+        "2.0": 29251,
+        "3.0": 16892,
+        "4.0": 13103,
+        "5.0": 9788,
+        "1.0": 5771,
+        "6.0": 2397
+      }
+    },
+    "zrin_fd_ivst_risk_grd_nm": {
+      "n_unique": 6,
+      "missing_rate": 0.1926,
+      "values": {
+        "높은 위험": 29251,
+        "다소 높은 위험": 16892,
+        "보통 위험": 13103,
+        "낮은 위험": 9788,
+        "매우 높은 위험": 5771,
+        "매우 낮은 위험": 2397
+      }
+    }
+  }
+}

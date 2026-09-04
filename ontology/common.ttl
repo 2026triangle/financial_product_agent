@@ -31,7 +31,9 @@ fp:primaryKey    a owl:AnnotationProperty ; rdfs:label "기본키"@ko .
 fp:graphLabel    a owl:AnnotationProperty ; rdfs:label "Neo4j 노드 라벨"@ko .
 fp:hasSynonym    a owl:AnnotationProperty ; rdfs:label "동의어/구어체/상품군별 표기"@ko .
 fp:valueCode     a owl:AnnotationProperty ; rdfs:label "원천 코드값"@ko ;
-    rdfs:comment "상품군마다 표기가 달라 복수 지정. 형식: '<테이블>:<원천값>'"@ko .
+    rdfs:comment "상품군마다 표기가 달라 복수 지정. 형식: '<테이블>:<원천값>'. 같은 테이블에 여러 개가 있으면 서로 다른 행을 가리키는 peer 값들이다(예: Region의 국가별 값) — normalize_value는 raw가 그중 하나와 일치하면 그대로(뭉개지 않고) 반환한다"@ko .
+fp:altValueCode  a owl:AnnotationProperty ; rdfs:label "대체 원천값(별칭 컬럼)"@ko ;
+    rdfs:comment "fp:valueCode와 형식은 같지만('<테이블>:<원천값>'), 서로 다른 행이 아니라 같은 행의 다른 컬럼이 같은 사실을 표기한 별칭이다(예: 국내ETF 위험등급의 pd_risk_nm 이름형은 pd_risk_cd 코드형의 별칭). normalize_value는 이 값으로 매칭되면 그 값 자체가 아니라 같은 테이블의 fp:valueCode(대표값)로 정규화해 반환한다"@ko .
 fp:rank          a owl:AnnotationProperty ; rdfs:label "서열"@ko ;
     rdfs:comment "부등호 질의('AA- 이상','위험등급 낮은')를 결정론적으로 변환하기 위한 순위. 작을수록 상위"@ko .
 fp:notAvailableIn a owl:AnnotationProperty ; rdfs:label "미제공 상품군"@ko ;
@@ -144,24 +146,33 @@ fp:isSellable a owl:DatatypeProperty ; rdfs:domain fp:Product ; rdfs:range xsd:b
 # 5-A. 통제 어휘 — 위험등급 (실측: 1등급이 가장 위험, 6등급이 가장 안전)
 #      ※ 이전 초안은 방향이 반대로 정의되어 있었음. v4 실측값으로 정정.
 #      해외ETF에는 위험등급 컬럼 자체가 없다.
+#      국내ETF는 위험등급을 pd_risk_cd(코드)와 pd_risk_nm(이름) 두 컬럼으로 보유 — 코드형은 valueCode(대표값),
+#      이름형은 altValueCode(별칭)로 매핑한다. normalize_value가 이름형을 코드형으로 정규화한다.
+#      근거: db/finance_master.db tb_domestic_etf GROUP BY pd_risk_cd, pd_risk_nm (1,734건, 결측 0, 1:1 대응, 2026-09-04 검증)
 # =============================================================================
 fp:RiskGrade1 a fp:RiskGrade ; rdfs:label "1등급 매우높은위험"@ko ; fp:rank 1 ;
     fp:valueCode "tb_domestic_bond:1", "tb_domestic_etf:PD_RISK_GCD_11", "tb_fund:1.0" ;
+    fp:altValueCode "tb_domestic_etf:매우높은위험(1등급)" ;
     fp:hasSynonym "매우높은위험", "매우 높은 위험", "초고위험" .
 fp:RiskGrade2 a fp:RiskGrade ; rdfs:label "2등급 높은위험"@ko ; fp:rank 2 ;
     fp:valueCode "tb_domestic_bond:2", "tb_domestic_etf:PD_RISK_GCD_12", "tb_fund:2.0" ;
+    fp:altValueCode "tb_domestic_etf:높은위험(2등급)" ;
     fp:hasSynonym "높은위험", "높은 위험" .
 fp:RiskGrade3 a fp:RiskGrade ; rdfs:label "3등급 다소높은위험"@ko ; fp:rank 3 ;
     fp:valueCode "tb_domestic_bond:3", "tb_domestic_etf:PD_RISK_GCD_13", "tb_fund:3.0" ;
+    fp:altValueCode "tb_domestic_etf:다소높은위험(3등급)" ;
     fp:hasSynonym "다소높은위험", "다소 높은 위험" .
 fp:RiskGrade4 a fp:RiskGrade ; rdfs:label "4등급 보통위험"@ko ; fp:rank 4 ;
     fp:valueCode "tb_domestic_bond:4", "tb_domestic_etf:PD_RISK_GCD_14", "tb_fund:4.0" ;
+    fp:altValueCode "tb_domestic_etf:보통위험(4등급)" ;
     fp:hasSynonym "보통위험", "보통 위험", "중위험" .
 fp:RiskGrade5 a fp:RiskGrade ; rdfs:label "5등급 낮은위험"@ko ; fp:rank 5 ;
     fp:valueCode "tb_domestic_bond:5", "tb_domestic_etf:PD_RISK_GCD_15", "tb_fund:5.0" ;
+    fp:altValueCode "tb_domestic_etf:낮은위험(5등급)" ;
     fp:hasSynonym "낮은위험", "낮은 위험", "저위험", "안전한" .
 fp:RiskGrade6 a fp:RiskGrade ; rdfs:label "6등급 매우낮은위험"@ko ; fp:rank 6 ;
     fp:valueCode "tb_domestic_bond:6", "tb_domestic_etf:PD_RISK_GCD_16", "tb_fund:6.0" ;
+    fp:altValueCode "tb_domestic_etf:매우낮은위험(6등급)" ;
     fp:hasSynonym "매우낮은위험", "매우 낮은 위험", "가장 안전한" .
 fp:RiskGradeUnknown a fp:RiskGrade ; rdfs:label "미분류"@ko ;
     fp:valueCode "tb_domestic_bond:0" ;

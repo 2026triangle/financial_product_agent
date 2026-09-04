@@ -49,28 +49,28 @@ fp:cuBaseIndex a owl:DatatypeProperty ;
     rdfs:label "기초지수명 (추종 벤치마크 지수)"@ko ;
     fp:sourceColumn "tb_domestic_etf.cu_base_index|tb_foreign_etf.cu_base_index" ;
     rdfs:comment "ETF가 100% 추종하거나 복제하는 기준 벤치마크 지수(예: KOSPI 200, S&P 500, NASDAQ 100, KRX 2차전지 K-뉴딜, 항셍테크)입니다."@ko ;
-    fp:hasSynonym "S&P500 지수를 추종하는 국내 ETF 목록", "코스피200 기초지수 ETF", "나스닥100 지수 추종 ETF 찾아줘", "항셍테크 지수 복제하는 ETF", "미국 배당다우존스 지수 추종 상품" .
+    fp:hasSynonym "기초지수", "추종지수", "벤치마크", "추종 벤치마크", "기초 Benchmark", "복제 지수", "Index", "인덱스" .
 
 fp:cuChargeRt a owl:DatatypeProperty ;
     rdfs:domain fp:ETF ; rdfs:range xsd:decimal ;
     rdfs:label "총보수율 (TER/수수료)"@ko ;
     fp:sourceColumn "tb_domestic_etf.cu_charge_rt|tb_foreign_etf.cu_charge_rt" ;
     rdfs:comment "투자자가 연간 부담하는 운용보수, 판매보수, 수탁보수 등이 합산된 연간 총보수율(TER, %)입니다. ETF 투자 비용을 결정하는 핵심 지표입니다."@ko ;
-    fp:hasSynonym "수수료(총보수) 제일 저렴한 S&P500 ETF", "가장 싼 국내 ETF 찾아줘", "총보수 0.1% 이하 저보수 ETF 추천", "보수율 낮은 순서대로 ETF 정렬", "운용 수수료 아낄 수 있는 ETF", "TER 총보수 비용 얼마야?" .
+    fp:hasSynonym "총보수", "수수료", "운용보수", "보수율", "TER", "비용", "수수료 저렴한", "가장 싼 ETF", "초저보수 ETF", "보수 낮은", "연간 수수료", "Expense Ratio" .
 
 fp:cuChargeEtcRt a owl:DatatypeProperty ;
     rdfs:domain fp:DomesticETF ; rdfs:range xsd:decimal ;
     rdfs:label "기타비용율"@ko ;
     fp:sourceColumn "tb_domestic_etf.cu_charge_etc_rt" ;
     rdfs:comment "총보수 외에 증권 매매중개 수수료 및 회계감사비 등 기타 부대비용율(%)입니다."@ko ;
-    fp:hasSynonym "기타비용율 얼마야?", "실질 총비용(총보수+기타비용) 비교" .
+    fp:hasSynonym "기타비용", "부대비용", "매매중개수수료율", "숨은 수수료", "실질 총비용" .
 
 fp:cuStrtegy a owl:DatatypeProperty ;
     rdfs:domain fp:ETF ; rdfs:range xsd:string ;
     rdfs:label "운용전략방식 (실물/합성/액티브)"@ko ;
     fp:sourceColumn "tb_domestic_etf.cu_strtegy|tb_foreign_etf.cu_strtegy" ;
     rdfs:comment "ETF의 실물복제, 합성복제, 액티브 운용 등 복제 기법 및 전략 방식입니다."@ko ;
-    fp:hasSynonym "실물 복제 ETF야 합성 ETF야?", "액티브 운용 방식 ETF 목록", "합성복제 ETF 위험도" .
+    fp:hasSynonym "운용방식", "복제방식", "실물복제", "합성복제", "액티브", "패시브", "전략" .
 
 fp:cuLevFector a owl:DatatypeProperty ;
     rdfs:domain fp:DomesticETF ; rdfs:range xsd:decimal ;
@@ -113,14 +113,14 @@ fp:pdPenTrYn a owl:DatatypeProperty ;
     rdfs:label "연금계좌거래가능여부 (퇴직연금/IRP 매수가능)"@ko ;
     fp:sourceColumn "tb_domestic_etf.pd_pen_tr_yn" ;
     rdfs:comment "개인형 퇴직연금(IRP/DC) 및 연금저축 계좌에서 매수할 수 있는지 여부(Y: 연금매수가능, N: 연금매수불가/레버리지·인버스 등)입니다."@ko ;
-    fp:hasSynonym "퇴직연금 IRP 계좌에서 살 수 있는 ETF 찾아줘", "IRP 계좌 매수 가능 ETF 목록", "연금저축계좌에서 투자할 수 있어?", "DC 퇴직연금 편입 가능한 종목만 보여줘", "연금계좌 투자 불가 종목 제외해줘" .
+    fp:hasSynonym "퇴직연금", "IRP", "연금저축", "개인연금", "DC형", "연금계좌 매수", "연금 투자 가능", "연금 편입 가능 종목", "연금저축펀드", "퇴직연금 편입" .
 
 fp:pdPenRiskNm a owl:DatatypeProperty ;
     rdfs:domain fp:DomesticETF ; rdfs:range xsd:string ;
     rdfs:label "연금거래위험구분 (안전자산/위험자산 구분)"@ko ;
     fp:sourceColumn "tb_domestic_etf.pd_pen_risk_nm" ;
     rdfs:comment "퇴직연금 감독규정상 위험자산(70% 한도)인지 안전자산(100% 투자 가능)인지 나타내는 구분(안전자산, 위험자산, N)입니다."@ko ;
-    fp:hasSynonym "퇴직연금 안전자산 100% 채울 수 있는 ETF", "퇴직연금 70% 위험자산 한도 대상 ETF", "IRP 안전자산으로 인정되는 채권형 ETF 목록", "위험자산 비중 꽉 찼을 때 살 수 있는 안전자산 ETF", "퇴직연금 안전자산 분류 종목" .
+    fp:hasSynonym "안전자산", "위험자산", "연금 안전자산 100%", "위험자산 70% 한도", "연금 위험구분", "퇴직연금 채우기", "안전자산 ETF", "위험자산 한도" .
 
 fp:pdRiskCd a owl:DatatypeProperty ;
     rdfs:domain fp:DomesticETF ; rdfs:range xsd:string ;
@@ -133,7 +133,7 @@ fp:pdRiskNm a owl:DatatypeProperty ;
     rdfs:label "위험등급명 (투자위험수준)"@ko ;
     fp:sourceColumn "tb_domestic_etf.pd_risk_nm" ;
     rdfs:comment "ETF의 투자 위험 수준(매우높은위험(1등급), 높은위험(2등급), 보통위험(4등급), 낮은위험 등)입니다."@ko ;
-    fp:hasSynonym "낮은 위험의 안전한 ETF 추천해줘", "초고위험(1등급) 주식형 ETF 목록", "보통위험 이하 안정적인 상품" .
+    fp:hasSynonym "위험등급명", "위험수준", "투자위험", "안전한 ETF", "고위험 ETF", "초저위험" .
 
 fp:pdSpacYn a owl:DatatypeProperty ;
     rdfs:domain fp:DomesticETF ; rdfs:range xsd:string ;
@@ -200,14 +200,14 @@ fp:wuInvAstType a owl:DatatypeProperty ;
     rdfs:label "투자자산군 (자산분류 1축)"@ko ;
     fp:sourceColumn "tb_domestic_etf.wu_inv_ast_type|tb_foreign_etf.wu_inv_ast_type" ;
     rdfs:comment "AI 테마 분류 1축(Axis 1)으로 주식, 채권, 원자재, 단기자금 등 주요 투자 대상 자산 분류입니다."@ko ;
-    fp:hasSynonym "해외 주식형 ETF 찾아줘", "국내 채권형 ETF 목록", "원자재 금 ETF 보여줘", "주식형 ETF만 모아서 보여줘" .
+    fp:hasSynonym "자산군", "투자자산", "주식형", "채권형", "원자재형", "금/오일", "단기자금", "부동산/리츠", "자산 대분류" .
 
 fp:wuInvRgn a owl:DatatypeProperty ;
     rdfs:domain fp:ETF ; rdfs:range xsd:string ;
     rdfs:label "투자지역 (지리적 분류 2축)"@ko ;
     fp:sourceColumn "tb_domestic_etf.wu_inv_rgn|tb_foreign_etf.wu_inv_rgn" ;
     rdfs:comment "AI 테마 분류 2축(Axis 2)으로 국내, 미국, 중국, 일본, 글로벌, 유럽, 신흥국 등 자산이 투자되는 지리적 지역입니다."@ko ;
-    fp:hasSynonym "미국에 투자하는 국내 상장 ETF", "중국 테크 시장에 투자하는 ETF", "일본 증시 투자 ETF 찾아줘", "글로벌 전세계 분산투자 ETF" .
+    fp:hasSynonym "투자지역", "투자국가", "미국투자", "국내투자", "중국투자", "글로벌", "신흥국", "해외투자" .
 
 fp:wuUptDt a owl:DatatypeProperty ;
     rdfs:domain fp:ETF ; rdfs:range xsd:date ;
@@ -244,14 +244,14 @@ fp:pdCircNetTamt a owl:DatatypeProperty ;
     rdfs:label "유통시가총액"@ko ;
     fp:sourceColumn "tb_domestic_etf.pd_circ_net_tamt" ;
     rdfs:comment "유통주식수를 기준으로 계산된 시가총액(원)입니다."@ko ;
-    fp:hasSynonym "유통 시가총액 규모 얼마야?" .
+    fp:hasSynonym "유통시총", "유통시가총액 규모" .
 
 fp:pdNetTamt a owl:DatatypeProperty ;
     rdfs:domain fp:DomesticETF ; rdfs:range xsd:decimal ;
     rdfs:label "시가총액 (총규모/순자산규모)"@ko ;
     fp:sourceColumn "tb_domestic_etf.pd_net_tamt" ;
     rdfs:comment "ETF의 총 발행 주식수 × 현재가로 계산된 시장 전체 시가총액 규모(원 단위)입니다. 유동성과 대형주 여부를 판단하는 지표입니다."@ko ;
-    fp:hasSynonym "시가총액 1조 이상 대형 ETF 찾아줘", "규모 제일 큰 ETF 순서대로 보여줘", "시가총액 상위 종목 목록", "시총 5000억 넘는 인기 ETF" .
+    fp:hasSynonym "시가총액", "시총", "총규모", "대형 ETF", "시총 1조", "규모 큰 ETF", "자산규모" .
 
 fp:pdNavPshr a owl:DatatypeProperty ;
     rdfs:domain fp:DomesticETF ; rdfs:range xsd:decimal ;
@@ -288,7 +288,7 @@ fp:pdDvidYield a owl:DatatypeProperty ;
     rdfs:label "분배율 (연환산 배당수익률)"@ko ;
     fp:sourceColumn "tb_domestic_etf.pd_dvid_yield" ;
     rdfs:comment "현재 주가 대비 연간 지급된 분배금의 비율을 나타내는 연환산 배당수익률(분배율, %)입니다. 고배당/월배당 ETF 선택의 핵심 기준입니다."@ko ;
-    fp:hasSynonym "배당수익률 5% 넘는 월배당 ETF 추천해줘", "분배율 제일 높은 커버드콜 ETF", "연간 배당률 몇 %야?", "배당 많이 주는 고배당주 ETF 목록", "시가배당률 7% 이상 고수익 배당 ETF" .
+    fp:hasSynonym "배당수익률", "분배율", "배당률", "고배당 ETF", "월배당 수익률", "배당 많이 주는 ETF", "배당금 높은", "시가배당률", "Dividend Yield" .
 
 fp:duClpr a owl:DatatypeProperty ;
     rdfs:domain fp:ETF ; rdfs:range xsd:decimal ;
@@ -343,7 +343,7 @@ fp:duLastAum a owl:DatatypeProperty ;
     rdfs:label "최종 AUM (순자산총액/운용규모)"@ko ;
     fp:sourceColumn "tb_domestic_etf.du_last_aum|tb_foreign_etf.du_last_aum" ;
     rdfs:comment "ETF가 실제로 보유하고 있는 총 순자산 규모(AUM, 원 단위)입니다."@ko ;
-    fp:hasSynonym "순자산총액 AUM 규모 제일 큰 ETF", "AUM 5000억 이상 대형 펀드", "운용자산 규모 알려줘" .
+    fp:hasSynonym "AUM", "순자산총액", "총운용자산", "순자산규모", "펀드크기" .
 
 fp:duNavRnfAmt a owl:DatatypeProperty ;
     rdfs:domain fp:DomesticETF ; rdfs:range xsd:decimal ;
@@ -356,42 +356,42 @@ fp:duEr1d a owl:DatatypeProperty ;
     rdfs:label "1일 수익률 (당일 등락률)"@ko ;
     fp:sourceColumn "tb_domestic_etf.du_er_1d|tb_foreign_etf.du_er_1d" ;
     rdfs:comment "전일 종가 대비 당일 종가의 하루 수익률(%)입니다."@ko ;
-    fp:hasSynonym "오늘 하루 동안 가장 많이 오른 ETF", "당일 등락률 1위 ETF 찾아줘", "오늘 급등한 ETF 목록", "하루 수익률 몇 %야?" .
+    fp:hasSynonym "1일 수익률", "하루 수익률", "당일 등락률", "오늘 상승률", "일간 수익률", "오늘 오른 ETF" .
 
 fp:duEr1m a owl:DatatypeProperty ;
     rdfs:domain fp:DomesticETF ; rdfs:range xsd:decimal ;
     rdfs:label "1개월 수익률 (한달 성과)"@ko ;
     fp:sourceColumn "tb_domestic_etf.du_er_1m" ;
     rdfs:comment "최근 1개월(30일)간의 가격 변동 수익률(%)입니다."@ko ;
-    fp:hasSynonym "최근 1달간 수익률 높은 ETF 추천해줘", "한달 동안 제일 많이 오른 테마 ETF", "1개월 성과 순위 보여줘" .
+    fp:hasSynonym "1개월 수익률", "한달 수익률", "1달 성과", "단기 수익률", "최근 30일 상승률" .
 
 fp:duEr3m a owl:DatatypeProperty ;
     rdfs:domain fp:DomesticETF ; rdfs:range xsd:decimal ;
     rdfs:label "3개월 수익률 (분기 성과)"@ko ;
     fp:sourceColumn "tb_domestic_etf.du_er_3m" ;
     rdfs:comment "최근 3개월(90일)간의 누적 가격 수익률(%)입니다."@ko ;
-    fp:hasSynonym "최근 3개월 수익률 제일 좋은 ETF", "3개월 성과 상위 종목" .
+    fp:hasSynonym "3개월 수익률", "분기 수익률", "최근 3달 성과" .
 
 fp:duEr6m a owl:DatatypeProperty ;
     rdfs:domain fp:DomesticETF ; rdfs:range xsd:decimal ;
     rdfs:label "6개월 수익률 (반기 성과)"@ko ;
     fp:sourceColumn "tb_domestic_etf.du_er_6m" ;
     rdfs:comment "최근 6개월(180일)간의 누적 가격 수익률(%)입니다."@ko ;
-    fp:hasSynonym "상반기 6개월간 수익률 얼마야?", "6개월 누적 수익률 상위" .
+    fp:hasSynonym "6개월 수익률", "반기 수익률", "상반기 성과" .
 
 fp:duEr1y a owl:DatatypeProperty ;
     rdfs:domain fp:ETF ; rdfs:range xsd:decimal ;
     rdfs:label "1년 수익률 (연간 성과)"@ko ;
     fp:sourceColumn "tb_domestic_etf.du_er_1y|tb_foreign_etf.du_er_1y" ;
     rdfs:comment "최근 1년간(365일)의 누적 가격 수익률(%)입니다. 1년간의 트랙레코드를 평가하는 핵심 지표입니다."@ko ;
-    fp:hasSynonym "최근 1년간 가장 많이 오른 ETF 1위가 뭐야?", "1년 수익률 20% 이상인 종목 추천해줘", "1년간 꾸준히 성과 좋은 우수 ETF", "연간 수익률 상위 종목 목록" .
+    fp:hasSynonym "1년 수익률", "연간 수익률", "1년 성과", "작년 수익률", "1년 동안 오른 종목", "1년 수익률 1위" .
 
 fp:duErYtd a owl:DatatypeProperty ;
     rdfs:domain fp:DomesticETF ; rdfs:range xsd:decimal ;
     rdfs:label "연초대비 수익률 (YTD)"@ko ;
     fp:sourceColumn "tb_domestic_etf.du_er_ytd" ;
     rdfs:comment "올해 1월 1일 첫 거래일 종가 대비 현재까지의 연초 이후 누적 수익률(YTD, %)입니다."@ko ;
-    fp:hasSynonym "올해 들어서(YTD) 몇 % 수익 났어?", "연초 대비 상승률 상위 종목 보여줘", "올해 제일 대박 난 ETF" .
+    fp:hasSynonym "YTD", "연초대비", "올해 수익률", "연초이후 수익률", "Year to Date" .
 
 fp:duVol1d a owl:DatatypeProperty ;
     rdfs:domain fp:ETF ; rdfs:range xsd:decimal ;

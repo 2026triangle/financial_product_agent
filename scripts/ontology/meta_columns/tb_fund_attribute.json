@@ -1,0 +1,54 @@
+[
+  {
+    "column_name": "itm_no",
+    "column_korean_name": "펀드표준코드 (ISIN, Foreign Key)",
+    "data_type": "VARCHAR(20)",
+    "description": "공모펀드 본 테이블(tb_fund)의 itm_no와 1:N으로 연결되는 외래키(Foreign Key)입니다.",
+    "synonyms": [
+      "펀드ISIN",
+      "외래키",
+      "조인코드",
+      "펀드식별자"
+    ],
+    "sample_values": [
+      "KR5116450039",
+      "KR5149450025"
+    ],
+    "sample_queries": [
+      "이 속성을 가진 펀드들의 ISIN 코드 목록",
+      "펀드 코드별 연결된 속성 조회"
+    ]
+  },
+  {
+    "column_name": "prfd_attr_cd",
+    "column_korean_name": "공모펀드속성코드 (테마/우대 분류태그)",
+    "data_type": "VARCHAR(20)",
+    "description": "펀드에 부여된 다차원 테마/스타일/투자전략/우대 속성 분류 태그 코드(예: F103: ESG/사회책임, N143: 반도체, V102: 가치주, H101: 배당주 등 95,618건 다중 매핑)입니다.",
+    "synonyms": [
+      "속성코드",
+      "펀드태그",
+      "테마코드",
+      "분류태그",
+      "ESG코드",
+      "스타일코드",
+      "배당속성",
+      "가치주속성",
+      "성장주속성",
+      "F103",
+      "N143",
+      "V102",
+      "H101"
+    ],
+    "sample_values": [
+      "F103",
+      "N143",
+      "V102"
+    ],
+    "sample_queries": [
+      "속성코드 F103을 보유한 ESG 펀드 목록 찾아줘",
+      "특정 테마 속성 태그가 매핑된 펀드 조회",
+      "반도체/배당 속성코드 검색",
+      "속성 태그별 펀드 필터링"
+    ]
+  }
+]

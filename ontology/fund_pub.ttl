@@ -119,7 +119,7 @@ fp:exchdgYn a owl:DatatypeProperty ;
     rdfs:label "환헤지적용여부 (H/UH 환노출)"@ko ;
     fp:sourceColumn "tb_fund.exchdg_yn" ;
     rdfs:comment "해외 투자 펀드의 환위험 헷지 전략 여부(Y: 환헤지형/H, N: 환노출/언헤지/UH, NaN: 국내투자 해당없음)입니다."@ko ;
-    fp:hasSynonym "환헤지(H) 되는 미국 펀드 찾아줘", "환노출(UH) 해외 펀드 목록", "환율 상승에 베팅하는 환노출형 펀드", "환헤지 적용 여부 확인해줘" .
+    fp:hasSynonym "환헤지", "환노출", "언헤지", "H형", "UH형", "환율변동반영", "환위험헤지", "Hedge" .
 
 fp:ovrsFdDesc a owl:DatatypeProperty ;
     rdfs:domain fp:Fund ; rdfs:range xsd:string ;
@@ -138,7 +138,7 @@ fp:orAttrDesc a owl:DatatypeProperty ;
     rdfs:label "운용자산유형 (주식형/채권형/혼합형)"@ko ;
     fp:sourceColumn "tb_fund.or_attr_desc" ;
     rdfs:comment "펀드의 핵심 투자 대상 자산 유형(주식형, 채권형, 주식혼합형, 채권혼합형, MMF, 재간접형, 파생형 등)입니다."@ko ;
-    fp:hasSynonym "주식형 펀드 찾아줘", "안전한 채권형 펀드 추천", "MMF 단기자금 펀드 목록", "글로벌 재간접 펀드" .
+    fp:hasSynonym "자산유형", "주식형펀드", "채권형펀드", "혼합형펀드", "MMF", "재간접펀드", "단기자금", "파생상품형" .
 
 fp:fdEstbCtryCd a owl:DatatypeProperty ;
     rdfs:domain fp:Fund ; rdfs:range xsd:string ;
@@ -169,14 +169,14 @@ fp:zrinFdIvstRiskGcd a owl:DatatypeProperty ;
     rdfs:label "위험등급코드 (제로인 평가)"@ko ;
     fp:sourceColumn "tb_fund.zrin_fd_ivst_risk_gcd" ;
     rdfs:comment "펀드평가사 제로인 기준 투자위험등급(1: 매우높은위험, 2: 높은위험, 3: 다소높은위험, 4: 보통위험, 5: 낮은위험, 6: 매우낮은위험)입니다."@ko ;
-    fp:hasSynonym "1등급 초고위험 주식 펀드", "5등급 또는 6등급 안전한 저위험 펀드 추천해줘" .
+    fp:hasSynonym "위험등급", "제로인위험등급", "1등급 초고위험", "6등급 초저위험", "투자위험도" .
 
 fp:zrinFdIvstRiskGrdNm a owl:DatatypeProperty ;
     rdfs:domain fp:Fund ; rdfs:range xsd:string ;
     rdfs:label "위험등급명 (안전도/위험수준)"@ko ;
     fp:sourceColumn "tb_fund.zrin_fd_ivst_risk_grd_nm" ;
     rdfs:comment "펀드 위험 수준 한글 명칭(매우 높은 위험, 높은 위험, 다소 높은 위험, 보통 위험, 낮은 위험, 매우 낮은 위험)입니다."@ko ;
-    fp:hasSynonym "낮은 위험 등급의 안정적인 펀드 찾아줘", "원금 손실 걱정 적은 매우 낮은 위험 펀드", "매우 높은 위험 등급 주식형 펀드" .
+    fp:hasSynonym "위험등급명", "안전한 펀드", "위험도 낮은 펀드", "초저위험 펀드", "고위험 펀드", "안정형 펀드", "매우 낮은 위험" .
 
 fp:saleYn a owl:DatatypeProperty ;
     rdfs:domain fp:Fund ; rdfs:range xsd:string ;
@@ -231,70 +231,70 @@ fp:fdNastSuma a owl:DatatypeProperty ;
     rdfs:label "순자산총액 (설정액/펀드규모)"@ko ;
     fp:sourceColumn "tb_fund.fd_nast_suma" ;
     rdfs:comment "해당 펀드 클래스의 총 순자산 설정액 규모(원 단위)입니다. 펀드 유동성, 자금 유입 규모 및 안정성을 파악하는 핵심 지표입니다."@ko ;
-    fp:hasSynonym "순자산 1000억 이상 대형 공모펀드 추천", "사람들이 제일 많이 가입한 펀드 찾아줘", "설정액 규모 큰 펀드 순서대로 정렬", "순자산총액 규모 1위 펀드", "안정적으로 돈이 많이 몰린 대형 펀드" .
+    fp:hasSynonym "설정액", "순자산총액", "펀드규모", "AUM", "사람들이 많이 가입한 펀드", "대형 펀드", "자금 유입 많은 펀드", "인기 펀드", "규모 큰 펀드", "운용규모" .
 
 fp:fdWk1ErnR a owl:DatatypeProperty ;
     rdfs:domain fp:Fund ; rdfs:range xsd:decimal ;
     rdfs:label "1주일 수익률"@ko ;
     fp:sourceColumn "tb_fund.fd_wk1_ern_r" ;
     rdfs:comment "최근 1주일간의 기준가 누적 수익률(%)입니다."@ko ;
-    fp:hasSynonym "최근 일주일간 수익률" .
+    fp:hasSynonym "1주 수익률", "주간 수익률" .
 
 fp:fdMm1ErnR a owl:DatatypeProperty ;
     rdfs:domain fp:Fund ; rdfs:range xsd:decimal ;
     rdfs:label "1개월 수익률"@ko ;
     fp:sourceColumn "tb_fund.fd_mm1_ern_r" ;
     rdfs:comment "최근 1개월(30일)간의 기준가 누적 수익률(%)입니다."@ko ;
-    fp:hasSynonym "최근 1개월 수익률 높은 펀드 찾아줘", "한달 성과 상위 펀드" .
+    fp:hasSynonym "1개월 수익률", "한달 수익률", "최근 30일 성과" .
 
 fp:fdMm3ErnR a owl:DatatypeProperty ;
     rdfs:domain fp:Fund ; rdfs:range xsd:decimal ;
     rdfs:label "3개월 수익률"@ko ;
     fp:sourceColumn "tb_fund.fd_mm3_ern_r" ;
     rdfs:comment "최근 3개월(90일)간의 기준가 누적 수익률(%)입니다."@ko ;
-    fp:hasSynonym "최근 3개월 단기 성과 좋은 펀드" .
+    fp:hasSynonym "3개월 수익률", "분기 성과" .
 
 fp:fdMm6ErnR a owl:DatatypeProperty ;
     rdfs:domain fp:Fund ; rdfs:range xsd:decimal ;
     rdfs:label "6개월 수익률"@ko ;
     fp:sourceColumn "tb_fund.fd_mm6_ern_r" ;
     rdfs:comment "최근 6개월(180일)간의 기준가 누적 수익률(%)입니다."@ko ;
-    fp:hasSynonym "최근 6개월간 수익률 상위 펀드" .
+    fp:hasSynonym "6개월 수익률", "반기 수익률" .
 
 fp:fdMm18ErnR a owl:DatatypeProperty ;
     rdfs:domain fp:Fund ; rdfs:range xsd:decimal ;
     rdfs:label "18개월 수익률"@ko ;
     fp:sourceColumn "tb_fund.fd_mm18_ern_r" ;
     rdfs:comment "최근 18개월간의 기준가 누적 수익률(%)입니다."@ko ;
-    fp:hasSynonym "18개월 누적 수익률" .
+    fp:hasSynonym "18개월 수익률" .
 
 fp:fdYr1ErnR a owl:DatatypeProperty ;
     rdfs:domain fp:Fund ; rdfs:range xsd:decimal ;
     rdfs:label "1년 수익률 (연간 운용성과)"@ko ;
     fp:sourceColumn "tb_fund.fd_yr1_ern_r" ;
     rdfs:comment "최근 1년간(365일)의 기준가 누적 운용 성과 수익률(%)입니다. 펀드의 1년 성과를 비교하는 핵심 지표입니다."@ko ;
-    fp:hasSynonym "최근 1년간 제일 수익률 높았던 펀드 뭐야?", "1년 수익률 20% 이상 고수익 펀드 추천", "작년에 가장 많이 오른 펀드 찾아줘", "1년 동안 제일 대박 난 주식형 펀드", "1년 성과 상위 10개 펀드 목록" .
+    fp:hasSynonym "1년 수익률", "연간 수익률", "1년 성과", "작년 수익률", "최근 1년 동안 오른 정도", "수익률 1위 펀드", "성과 좋은 펀드", "수익률 높은 펀드", "대박 난 펀드", "1년 누적 성과" .
 
 fp:fdYr2ErnR a owl:DatatypeProperty ;
     rdfs:domain fp:Fund ; rdfs:range xsd:decimal ;
     rdfs:label "2년 수익률"@ko ;
     fp:sourceColumn "tb_fund.fd_yr2_ern_r" ;
     rdfs:comment "최근 2년간의 기준가 누적 운용 성과 수익률(%)입니다."@ko ;
-    fp:hasSynonym "2년 누적 수익률 우수한 펀드" .
+    fp:hasSynonym "2년 수익률", "2년 성과" .
 
 fp:fdYr3ErnR a owl:DatatypeProperty ;
     rdfs:domain fp:Fund ; rdfs:range xsd:decimal ;
     rdfs:label "3년 수익률 (장기 성과)"@ko ;
     fp:sourceColumn "tb_fund.fd_yr3_ern_r" ;
     rdfs:comment "최근 3년간의 장기 운용 성과를 평가하는 누적 수익률(%)입니다."@ko ;
-    fp:hasSynonym "3년 장기 성과가 꾸준히 좋은 펀드 추천해줘", "3년 수익률 40% 넘는 우수 펀드", "장기 투자 추천 펀드" .
+    fp:hasSynonym "3년 수익률", "3년 성과", "장기 성과 우수 펀드", "3년 누적 수익률" .
 
 fp:fdYr5ErnR a owl:DatatypeProperty ;
     rdfs:domain fp:Fund ; rdfs:range xsd:decimal ;
     rdfs:label "5년 수익률 (초장기 트랙레코드)"@ko ;
     fp:sourceColumn "tb_fund.fd_yr5_ern_r" ;
     rdfs:comment "최근 5년간의 초장기 트랙레코드 누적 수익률(%)입니다."@ko ;
-    fp:hasSynonym "5년 장기 투자 성과 우수 펀드", "5년 누적 수익률 순위" .
+    fp:hasSynonym "5년 수익률", "5년 성과", "초장기 성과", "5년 트랙레코드" .
 
 # -----------------------------------------------------------------------------
 # tb_fund_attribute 전용 속성 (1개)
@@ -304,4 +304,4 @@ fp:prfdAttrCd a owl:DatatypeProperty ;
     rdfs:label "공모펀드속성코드 (테마/우대 분류태그)"@ko ;
     fp:sourceColumn "tb_fund_attribute.prfd_attr_cd" ;
     rdfs:comment "펀드에 부여된 다차원 테마/스타일/투자전략/우대 속성 분류 태그 코드(예: F103: ESG/사회책임, N143: 반도체, V102: 가치주, H101: 배당주 등 95,618건 다중 매핑)입니다."@ko ;
-    fp:hasSynonym "속성코드 F103을 보유한 ESG 펀드 목록 찾아줘", "특정 테마 속성 태그가 매핑된 펀드 조회", "반도체/배당 속성코드 검색", "속성 태그별 펀드 필터링" .
+    fp:hasSynonym "속성코드", "펀드태그", "테마코드", "분류태그", "ESG코드", "스타일코드", "배당속성", "가치주속성", "성장주속성", "F103", "N143", "V102", "H101" .

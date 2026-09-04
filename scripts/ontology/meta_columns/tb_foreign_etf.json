@@ -1,0 +1,982 @@
+[
+  {
+    "column_name": "pd_itm_no",
+    "column_korean_name": "글로벌 티커 (Ticker)",
+    "data_type": "VARCHAR(20)",
+    "description": "미국 등 해외 거래소에서 거래되는 글로벌 티커 심볼(Primary Key, 예: SPY, QQQ, VOO, JEPI, SCHD 등)입니다.",
+    "synonyms": [
+      "해외티커",
+      "미국티커",
+      "심볼",
+      "Ticker",
+      "종목기호",
+      "SPY",
+      "QQQ",
+      "SCHD",
+      "JEPI",
+      "VOO"
+    ],
+    "sample_values": [
+      "EES",
+      "CHGX.O",
+      "JQUA.K"
+    ],
+    "sample_queries": [
+      "미국 티커 SPY 찾아줘",
+      "QQQ ETF 정보 알려줘",
+      "배당 ETF JEPI 티커 검색",
+      "SCHD 배당 ETF 조회",
+      "미국 주식 티커로 ETF 찾기"
+    ]
+  },
+  {
+    "column_name": "pd_isin_cd",
+    "column_korean_name": "국제표준종목코드 (ISIN)",
+    "data_type": "VARCHAR(20)",
+    "description": "해외 ETF의 12자리 국제 표준 ISIN 식별코드(예: US78462F1030)입니다.",
+    "synonyms": [
+      "ISIN",
+      "국제표준코드",
+      "해외ISIN",
+      "US코드"
+    ],
+    "sample_values": [
+      "US97717W5629",
+      "US02072L1513",
+      "US46641Q7613"
+    ],
+    "sample_queries": [
+      "해외 ETF ISIN 코드 알려줘",
+      "US78462F1030 종목 뭐야?"
+    ]
+  },
+  {
+    "column_name": "pd_itm_no_ma",
+    "column_korean_name": "단축종목코드",
+    "data_type": "VARCHAR(20)",
+    "description": "글로벌 단축 종목코드입니다.",
+    "synonyms": [
+      "단축티커",
+      "단축코드"
+    ],
+    "sample_values": [
+      "EES",
+      "CHGX.O",
+      "JQUA.K"
+    ],
+    "sample_queries": [
+      "단축 티커"
+    ]
+  },
+  {
+    "column_name": "pd_nm",
+    "column_korean_name": "공식 상품명 (해외 ETF 명칭)",
+    "data_type": "VARCHAR(255)",
+    "description": "글로벌 운용사 및 추종 지수가 명시된 해외 공식 ETF 풀네임(예: SPDR S&P 500 ETF Trust, Invesco QQQ Trust, Vanguard S&P 500 ETF)입니다.",
+    "synonyms": [
+      "해외ETF명",
+      "공식 명칭",
+      "풀네임",
+      "미국 펀드명"
+    ],
+    "sample_values": [
+      "WisdomTree US SmallCap Fund",
+      "Stance Sustainable Beta ETF",
+      "JPMorgan US Quality Factor ETF"
+    ],
+    "sample_queries": [
+      "SPDR S&P 500 공식 이름 찾아줘",
+      "Vanguard S&P500 ETF 풀네임",
+      "인베스코 QQQ 공식 명칭"
+    ]
+  },
+  {
+    "column_name": "pd_abrv_nm",
+    "column_korean_name": "약어 상품명",
+    "data_type": "VARCHAR(100)",
+    "description": "MTS/HTS 해외주식 화면 표기용 단축 상품명입니다.",
+    "synonyms": [
+      "약어명",
+      "단축명"
+    ],
+    "sample_values": [
+      "EES",
+      "CHGX",
+      "JQUA"
+    ],
+    "sample_queries": [
+      "해외 ETF 약어로 검색"
+    ]
+  },
+  {
+    "column_name": "pd_us_cik",
+    "column_korean_name": "미국 SEC CIK 번호",
+    "data_type": "VARCHAR(20)",
+    "description": "미국 증권거래위원회(SEC) EDGAR 전자공시 시스템에 등록된 10자리 중앙식별키(CIK, 예: 0001350487)입니다.",
+    "synonyms": [
+      "SEC CIK",
+      "EDGAR 공시코드",
+      "SEC 등록번호",
+      "CIK"
+    ],
+    "sample_values": [
+      "1350487",
+      "1592900",
+      "1485894"
+    ],
+    "sample_queries": [
+      "SEC EDGAR 공시 식별자 CIK 번호",
+      "미국 SEC 등록번호 뭐야?"
+    ]
+  },
+  {
+    "column_name": "pd_lipper_id",
+    "column_korean_name": "Refinitiv Lipper ID",
+    "data_type": "VARCHAR(30)",
+    "description": "글로벌 펀드평가사 Refinitiv Lipper의 고유 펀드 식별코드(예: 40113961)입니다.",
+    "synonyms": [
+      "Lipper ID",
+      "리퍼 식별자",
+      "리피니티브 ID"
+    ],
+    "sample_values": [
+      "40113961",
+      "40222154",
+      "40222489"
+    ],
+    "sample_queries": [
+      "리퍼(Lipper) 평가 식별자"
+    ]
+  },
+  {
+    "column_name": "pd_curr_cd",
+    "column_korean_name": "상장 통화 (결제통화)",
+    "data_type": "VARCHAR(20)",
+    "description": "해외 거래소에서 매매에 사용되는 결제 통화 단위(USD, EUR, HKD, JPY 등)입니다.",
+    "synonyms": [
+      "결제통화",
+      "거래통화",
+      "달러",
+      "USD",
+      "유로",
+      "엔화"
+    ],
+    "sample_values": [
+      "USD"
+    ],
+    "sample_queries": [
+      "달러로 거래되는 미국 ETF",
+      "유로화 표시 해외 ETF"
+    ]
+  },
+  {
+    "column_name": "pd_trd_ccy",
+    "column_korean_name": "거래 통화",
+    "data_type": "VARCHAR(20)",
+    "description": "실제 체결 거래에 적용되는 통화 코드입니다.",
+    "synonyms": [
+      "거래통화",
+      "체결통화"
+    ],
+    "sample_values": [
+      "USD"
+    ],
+    "sample_queries": [
+      "거래 통화 단위"
+    ]
+  },
+  {
+    "column_name": "pd_exg_mkt_cd",
+    "column_korean_name": "거래소시장코드",
+    "data_type": "VARCHAR(20)",
+    "description": "미국 뉴욕증권거래소(NYSE Arca), 나스닥(NASDAQ), Cboe 등 상장 거래소 코드입니다.",
+    "synonyms": [
+      "해외거래소",
+      "NYSE",
+      "나스닥",
+      "NASDAQ",
+      "AMX",
+      "Cboe"
+    ],
+    "sample_values": [
+      "AMX",
+      "NAS",
+      "NYS"
+    ],
+    "sample_queries": [
+      "나스닥 상장 해외 ETF",
+      "뉴욕거래소(NYSE) 상장 종목"
+    ]
+  },
+  {
+    "column_name": "pd_grp_no",
+    "column_korean_name": "그룹번호",
+    "data_type": "VARCHAR(50)",
+    "description": "해외 상품 그룹 번호(ETF/ETN)입니다.",
+    "synonyms": [
+      "상품그룹",
+      "ETF구분"
+    ],
+    "sample_values": [
+      "ETF",
+      "ETN"
+    ],
+    "sample_queries": [
+      "해외 ETN 종목 분리"
+    ]
+  },
+  {
+    "column_name": "pd_mkt_id",
+    "column_korean_name": "시장ID",
+    "data_type": "VARCHAR(50)",
+    "description": "글로벌 시장 식별자(US 등)입니다.",
+    "synonyms": [
+      "시장ID",
+      "미국시장"
+    ],
+    "sample_values": [
+      "US"
+    ],
+    "sample_queries": [
+      "미국 시장 종목"
+    ]
+  },
+  {
+    "column_name": "cu_fund_mgmt_co",
+    "column_korean_name": "글로벌 운용사 (해외 운용사)",
+    "data_type": "VARCHAR(100)",
+    "description": "해외 ETF를 운용하는 글로벌 자산운용사(예: BlackRock iShares, Vanguard, State Street SPDR, Invesco, Charles Schwab, JPMorgan 등)입니다.",
+    "synonyms": [
+      "글로벌운용사",
+      "뱅가드",
+      "블랙록",
+      "iShares",
+      "SPDR",
+      "인베스코",
+      "슈왑",
+      "JP모건",
+      "Vanguard",
+      "BlackRock"
+    ],
+    "sample_values": [
+      "WisdomTree Asset Management Inc",
+      "Empowered Funds LLC",
+      "JP Morgan Investment Management Inc"
+    ],
+    "sample_queries": [
+      "뱅가드(Vanguard) ETF 추천해줘",
+      "블랙록 iShares 미국 ETF 목록",
+      "스테이트스트리트 SPDR ETF",
+      "JP모건 운용 고배당 ETF"
+    ]
+  },
+  {
+    "column_name": "cu_base_index",
+    "column_korean_name": "기초 벤치마크 지수 (해외 기초지수)",
+    "data_type": "VARCHAR(255)",
+    "description": "해외 ETF가 추종하는 글로벌 벤치마크 지수(예: S&P 500 Index, Nasdaq 100 Index, Russell 2000, Philadelphia Semiconductor, MSCI World 등)입니다.",
+    "synonyms": [
+      "해외지수",
+      "기초지수",
+      "S&P500",
+      "나스닥100",
+      "러셀2000",
+      "필라델피아반도체",
+      "다우존스",
+      "MSCI"
+    ],
+    "sample_values": [
+      "WisdomTree US SmallCap TR USD",
+      "Change Finance Dvrsd Impct US LgCap FosFlFr CR USD",
+      "JP Morgan US Quality Factor TR USD"
+    ],
+    "sample_queries": [
+      "나스닥100 추종 미국 ETF",
+      "러셀 2000 중소형주 지수 추종 ETF",
+      "필라델피아 반도체 지수 추종 미국 ETF",
+      "S&P500 지수 추종 ETF 찾아줘"
+    ]
+  },
+  {
+    "column_name": "cu_charge_rt",
+    "column_korean_name": "총보수율 (Expense Ratio/운용수수료)",
+    "data_type": "NUMERIC(10, 4)",
+    "description": "투자자가 연간 부담하는 총 운용 수수료율(Gross Expense Ratio, %)입니다. 해외 ETF 투자 시 가장 중요한 비용 지표입니다.",
+    "synonyms": [
+      "총보수",
+      "수수료",
+      "운용보수",
+      "보수율",
+      "Expense Ratio",
+      "비용",
+      "수수료 싼 ETF",
+      "가장 저렴한 ETF",
+      "초저보수 미국 ETF",
+      "보수 낮은 해외 ETF"
+    ],
+    "sample_values": [
+      "0.38",
+      "0.49",
+      "0.12"
+    ],
+    "sample_queries": [
+      "수수료 제일 저렴한 미국 S&P500 ETF",
+      "총보수 0.05% 이하 초저보수 미국 ETF",
+      "미국 배당 ETF 보수율 비교",
+      "수수료 가장 싼 나스닥 ETF",
+      "Expense Ratio 낮은 순서대로 정렬"
+    ]
+  },
+  {
+    "column_name": "cu_etn_yn",
+    "column_korean_name": "ETN 여부",
+    "data_type": "VARCHAR(5)",
+    "description": "상장지수증권(ETN) 여부(Y: ETN, NaN/N: ETF)입니다.",
+    "synonyms": [
+      "ETN여부",
+      "ETN구분"
+    ],
+    "sample_values": [
+      "Y"
+    ],
+    "sample_queries": [
+      "이 종목 ETF야 ETN이야?"
+    ]
+  },
+  {
+    "column_name": "cu_inverse_short_yn",
+    "column_korean_name": "인버스/숏 전략 여부",
+    "data_type": "VARCHAR(5)",
+    "description": "지수 하락 시 수익이 발생하는 인버스/베어/숏 전략 상품 여부(Y: 인버스, NaN: 정방향)입니다.",
+    "synonyms": [
+      "인버스",
+      "숏",
+      "베어",
+      "하락베팅",
+      "SQQQ",
+      "Inverse",
+      "Short"
+    ],
+    "sample_values": [
+      "Y"
+    ],
+    "sample_queries": [
+      "미국 시장 인버스 숏 ETF 목록 보여줘",
+      "나스닥 하락에 투자하는 숏 ETF",
+      "인버스 전략 종목"
+    ]
+  },
+  {
+    "column_name": "cu_index_tracking_yn",
+    "column_korean_name": "지수추종여부 (패시브/액티브)",
+    "data_type": "VARCHAR(5)",
+    "description": "기초지수를 엄격히 복제하는 패시브 인덱스 펀드 여부(Y: 패시브, NaN: 액티브/전략형)입니다.",
+    "synonyms": [
+      "패시브",
+      "액티브",
+      "지수추종",
+      "인덱스펀드"
+    ],
+    "sample_values": [
+      "Y"
+    ],
+    "sample_queries": [
+      "액티브 ETF야 패시브 지수추종 ETF야?"
+    ]
+  },
+  {
+    "column_name": "cu_index_repl_mthd",
+    "column_korean_name": "지수복제방식 (Full/Optimized/Swap)",
+    "data_type": "VARCHAR(50)",
+    "description": "기초지수를 복제하는 운용 기법(Full: 완전복제, Optimized: 최적화 표본추출, Swap: 합성 스왑 등)입니다.",
+    "synonyms": [
+      "복제기법",
+      "완전복제",
+      "최적화복제",
+      "합성스왑"
+    ],
+    "sample_values": [
+      "Optimized",
+      "Swap",
+      "Full"
+    ],
+    "sample_queries": [
+      "실물 완전 복제 방식이야 합성 스왑 방식이야?"
+    ]
+  },
+  {
+    "column_name": "cu_strtegy",
+    "column_korean_name": "운용전략설명 (Investment Objective/투자목표)",
+    "data_type": "TEXT",
+    "description": "SEC 공시 및 투자설명서에 기재된 펀드의 상세 투자 목표, 편입 자산 전략 및 운용 철학에 대한 영문 전문 문단입니다.",
+    "synonyms": [
+      "운용전략",
+      "투자전략",
+      "투자목표",
+      "펀드설명",
+      "운용철학",
+      "편입전략",
+      "Investment Objective",
+      "Strategy",
+      "커버드콜 전략",
+      "배당성장 전략"
+    ],
+    "sample_values": [
+      "The Fund seeks to track the price and yield performance, before fees and expenses, of the WisdomTree U.S. SmallCap Earnings Index. The Index is a fundamentally weighted index that is comprised of earnings-generating companies within the small-capitalization segment of the U.S. stock market.",
+      "The Fund seeks to track the performance, before fees and expenses, of the Change Finance Diversified Impact U.S. Large Cap Fossil Fuel Free Index which measures the performance of an equal-weighted portfolio of approximately 100 large-, mid-capitalization equity securities of U.S.-listed companies.",
+      "The Fund seeks investment results that correspond to the performance of the JP Morgan US Quality Factor Index. The Index is comprised of U.S. equity securities selected to represent quality factor characteristics. Holdings in the Index are selected primarily from the constituents of the Russell 1000 Index."
+    ],
+    "sample_queries": [
+      "이 미국 ETF의 구체적인 투자 전략과 철학이 뭐야?",
+      "운용 방식 설명 전문 보여줘",
+      "어떤 종목들을 어떤 기준으로 편입해?",
+      "커버드콜 전략으로 고배당 주는 해외 ETF",
+      "배당성장주에 투자하는 ETF 설명해줘"
+    ]
+  },
+  {
+    "column_name": "cu_upt_dt",
+    "column_korean_name": "운용정보 갱신일자",
+    "data_type": "DATE",
+    "description": "운용 전략 및 보수 정보 갱신일자입니다.",
+    "synonyms": [
+      "운용정보갱신일"
+    ],
+    "sample_values": [
+      "2026-06-14"
+    ],
+    "sample_queries": [
+      "운용정보 기준일이 언제야?"
+    ]
+  },
+  {
+    "column_name": "pd_lstg_dt",
+    "column_korean_name": "해외 상장일자",
+    "data_type": "DATE",
+    "description": "해외 거래소에 최초로 상장되어 거래가 시작된 일자(YYYY-MM-DD)입니다.",
+    "synonyms": [
+      "상장일",
+      "미국상장일",
+      "최초상장",
+      "설정일"
+    ],
+    "sample_values": [
+      "2007-02-23",
+      "2017-10-09",
+      "2017-11-08"
+    ],
+    "sample_queries": [
+      "미국에 언제 상장된 종목이야?",
+      "상장된 지 10년 넘은 오래된 ETF",
+      "최근 신규 상장된 미국 ETF"
+    ]
+  },
+  {
+    "column_name": "pd_sale_yn",
+    "column_korean_name": "거래가능여부",
+    "data_type": "VARCHAR(5)",
+    "description": "미래에셋증권 해외주식 계좌에서 거래 가능한 종목 여부(Y: 거래가능)입니다.",
+    "synonyms": [
+      "거래가능",
+      "매수가능",
+      "주문가능"
+    ],
+    "sample_values": [
+      "Y"
+    ],
+    "sample_queries": [
+      "미래에셋에서 매수 가능한 해외 ETF"
+    ]
+  },
+  {
+    "column_name": "pd_tr_yn",
+    "column_korean_name": "거래정지여부",
+    "data_type": "VARCHAR(5)",
+    "description": "해외 거래소 매매 거래 정지 여부(N: 정상거래)입니다.",
+    "synonyms": [
+      "거래정지",
+      "매매정지"
+    ],
+    "sample_values": [
+      "N"
+    ],
+    "sample_queries": [
+      "거래정지된 해외 종목이야?"
+    ]
+  },
+  {
+    "column_name": "wu_core_yn",
+    "column_korean_name": "핵심추천종목여부 (미국 추천 ETF)",
+    "data_type": "VARCHAR(5)",
+    "description": "미래에셋증권 글로벌 자산배분 핵심 추천 ETF 종목 여부(Y/N)입니다.",
+    "synonyms": [
+      "해외추천",
+      "미국추천ETF",
+      "글로벌추천",
+      "핵심ETF",
+      "추천종목"
+    ],
+    "sample_values": [
+      "N"
+    ],
+    "sample_queries": [
+      "미래에셋 추천 글로벌 핵심 ETF",
+      "미국 주식 투자 추천 종목",
+      "글로벌 자산배분 추천 상품"
+    ]
+  },
+  {
+    "column_name": "wu_inv_ast_type",
+    "column_korean_name": "투자자산군 (Equity/Bond/Commodity)",
+    "data_type": "VARCHAR(50)",
+    "description": "글로벌 자산군 분류(Equity: 주식, Bond: 채권, Alternatives: 대체자산, Commodity: 원자재, Mixed Assets: 혼합자산)입니다.",
+    "synonyms": [
+      "글로벌자산군",
+      "Equity",
+      "Bond",
+      "Commodity",
+      "해외주식형",
+      "해외채권형",
+      "금/원유",
+      "대체투자"
+    ],
+    "sample_values": [
+      "Equity",
+      "Bond",
+      "Mixed Assets"
+    ],
+    "sample_queries": [
+      "미국 채권형 ETF 찾아줘",
+      "글로벌 금/원유 원자재 ETF",
+      "해외 주식형 ETF 목록"
+    ]
+  },
+  {
+    "column_name": "wu_inv_rgn",
+    "column_korean_name": "투자지역 (투자대상 국가/대륙)",
+    "data_type": "VARCHAR(50)",
+    "description": "자산이 투자되는 국가 및 지역(United States of America, Global, China, Europe, Emerging Markets 등)입니다.",
+    "synonyms": [
+      "투자지역",
+      "미국",
+      "중국",
+      "유럽",
+      "신흥국",
+      "글로벌",
+      "이머징",
+      "인도",
+      "일본"
+    ],
+    "sample_values": [
+      "United States of America",
+      "Global",
+      "Global Emerging Markets"
+    ],
+    "sample_queries": [
+      "미국에 투자하는 해외 ETF",
+      "신흥국(이머징) 투자 ETF",
+      "인도 주식시장 ETF 찾아줘",
+      "유럽 선진국 분산투자 ETF"
+    ]
+  },
+  {
+    "column_name": "wu_upt_dt",
+    "column_korean_name": "분류정보 갱신일자",
+    "data_type": "DATE",
+    "description": "자산분류 및 추천 정보 갱신일자입니다.",
+    "synonyms": [
+      "분류갱신일"
+    ],
+    "sample_values": [
+      "2026-06-14"
+    ],
+    "sample_queries": [
+      "분류 갱신일자"
+    ]
+  },
+  {
+    "column_name": "pd_lst_price",
+    "column_korean_name": "상장가격 (최초가격)",
+    "data_type": "NUMERIC(15, 4)",
+    "description": "상장 당시 최초 가격(달러 단위)입니다.",
+    "synonyms": [
+      "최초상장가",
+      "상장가격"
+    ],
+    "sample_values": [
+      "0"
+    ],
+    "sample_queries": [
+      "최초 상장가"
+    ]
+  },
+  {
+    "column_name": "pd_lst_stk_cnt",
+    "column_korean_name": "상장주식수",
+    "data_type": "NUMERIC(25, 4)",
+    "description": "최초 상장 시 발행 주식수입니다.",
+    "synonyms": [
+      "초기주식수"
+    ],
+    "sample_values": [
+      "10650000",
+      "5863240",
+      "112900000"
+    ],
+    "sample_queries": [
+      "상장 주식수"
+    ]
+  },
+  {
+    "column_name": "ru_mkt_price",
+    "column_korean_name": "실시간 시장가격 (미국 현재가)",
+    "data_type": "NUMERIC(15, 4)",
+    "description": "해외 거래소 실시간 장중 체결 가격(달러)입니다.",
+    "synonyms": [
+      "실시간시세",
+      "현재가",
+      "달러가격",
+      "실시간가격",
+      "장중시세"
+    ],
+    "sample_values": [
+      "65.8854",
+      "33.479",
+      "72.05"
+    ],
+    "sample_queries": [
+      "현재 미국 현지 시세 얼마야?",
+      "실시간 시장가 알려줘",
+      "지금 장중 가격 몇 달러야?"
+    ]
+  },
+  {
+    "column_name": "ru_mkt_volume",
+    "column_korean_name": "실시간 시장거래량",
+    "data_type": "NUMERIC(25, 4)",
+    "description": "실시간 장중 거래량(주)입니다.",
+    "synonyms": [
+      "실시간거래량",
+      "장중거래량"
+    ],
+    "sample_values": [
+      "5445",
+      "5626",
+      "460569"
+    ],
+    "sample_queries": [
+      "실시간 거래량 확인"
+    ]
+  },
+  {
+    "column_name": "du_clpr",
+    "column_korean_name": "종가 (달러 마감가)",
+    "data_type": "NUMERIC(15, 4)",
+    "description": "해외 거래소 정규장 최종 마감 체결 종가(달러 단위)입니다.",
+    "synonyms": [
+      "종가",
+      "마감가",
+      "미국종가",
+      "달러종가",
+      "어제 종가"
+    ],
+    "sample_values": [
+      "65.8854",
+      "33.479",
+      "72.05"
+    ],
+    "sample_queries": [
+      "어제 미국 장마감 종가 얼마였어?",
+      "SPY 현재 종가 몇 달러야?",
+      "마감 가격 확인해줘"
+    ]
+  },
+  {
+    "column_name": "du_bpr",
+    "column_korean_name": "기준가",
+    "data_type": "NUMERIC(15, 4)",
+    "description": "해외 당일 매매 기준 가격(달러)입니다.",
+    "synonyms": [
+      "기준가",
+      "달러기준가"
+    ],
+    "sample_values": [
+      "66.39",
+      "33.0006",
+      "71.0"
+    ],
+    "sample_queries": [
+      "미국 ETF 기준가"
+    ]
+  },
+  {
+    "column_name": "du_hpr",
+    "column_korean_name": "고가 (달러)",
+    "data_type": "NUMERIC(15, 4)",
+    "description": "당일 장중 최고 체결가(달러)입니다.",
+    "synonyms": [
+      "고가",
+      "최고가"
+    ],
+    "sample_values": [
+      "67.0",
+      "33.62",
+      "72.2689"
+    ],
+    "sample_queries": [
+      "장중 최고가 얼마 찍었어?"
+    ]
+  },
+  {
+    "column_name": "du_lpr",
+    "column_korean_name": "저가 (달러)",
+    "data_type": "NUMERIC(15, 4)",
+    "description": "당일 장중 최저 체결가(달러)입니다.",
+    "synonyms": [
+      "저가",
+      "최저가"
+    ],
+    "sample_values": [
+      "65.8854",
+      "33.479",
+      "71.85"
+    ],
+    "sample_queries": [
+      "장중 최저가"
+    ]
+  },
+  {
+    "column_name": "du_opr",
+    "column_korean_name": "시가 (장 시작가)",
+    "data_type": "NUMERIC(15, 4)",
+    "description": "당일 장 시작 체결 시가(달러)입니다.",
+    "synonyms": [
+      "시가",
+      "시작체결가"
+    ],
+    "sample_values": [
+      "67.0",
+      "33.52",
+      "71.86"
+    ],
+    "sample_queries": [
+      "장 시작 가격 얼마였어?"
+    ]
+  },
+  {
+    "column_name": "du_diff_rt",
+    "column_korean_name": "괴리율",
+    "data_type": "NUMERIC(10, 4)",
+    "description": "시장 종가와 순자산가치(NAV) 간의 괴리율(%)입니다.",
+    "synonyms": [
+      "괴리율",
+      "프리미엄"
+    ],
+    "sample_values": [],
+    "sample_queries": [
+      "미국 ETF 괴리율"
+    ]
+  },
+  {
+    "column_name": "du_er_1d",
+    "column_korean_name": "1일 수익률 (미국장 등락률)",
+    "data_type": "NUMERIC(10, 4)",
+    "description": "전일 대비 하루 가격 등락 수익률(%)입니다.",
+    "synonyms": [
+      "1일 수익률",
+      "하루 등락률",
+      "어제 수익률"
+    ],
+    "sample_values": [
+      "0.0"
+    ],
+    "sample_queries": [
+      "어제 미국장 하루 수익률 몇 %야?"
+    ]
+  },
+  {
+    "column_name": "du_er_1y",
+    "column_korean_name": "1년 수익률 (연간 토탈리턴)",
+    "data_type": "NUMERIC(10, 4)",
+    "description": "최근 1년간의 누적 토탈리턴 수익률(%)입니다. 미국 ETF의 장기 성과를 비교하는 핵심 지표입니다.",
+    "synonyms": [
+      "1년 수익률",
+      "연간 수익률",
+      "1년 성과",
+      "미국 ETF 수익률 1위",
+      "연간 토탈리턴"
+    ],
+    "sample_values": [
+      "26.4000",
+      "32.1000",
+      "-8.5000"
+    ],
+    "sample_queries": [
+      "최근 1년간 가장 많이 오른 미국 ETF",
+      "1년 수익률 30% 이상 해외 ETF",
+      "미국 테크 ETF 1년 성과 비교해줘",
+      "연간 수익률 높은 미국 주식형 ETF"
+    ]
+  },
+  {
+    "column_name": "du_last_nav",
+    "column_korean_name": "최종 NAV (순자산가치)",
+    "data_type": "NUMERIC(15, 4)",
+    "description": "장마감 후 산출된 1주당 순자산가치(NAV, 달러)입니다.",
+    "synonyms": [
+      "NAV",
+      "순자산가치",
+      "달러NAV"
+    ],
+    "sample_values": [
+      "49.7",
+      "28.15",
+      "24.6"
+    ],
+    "sample_queries": [
+      "미국 ETF 순자산가치 NAV 얼마야?"
+    ]
+  },
+  {
+    "column_name": "du_last_aum",
+    "column_korean_name": "최종 AUM (총순자산규모)",
+    "data_type": "NUMERIC(25, 4)",
+    "description": "해외 ETF의 총 순자산 운용 규모(AUM, 달러 단위)입니다. 유동성과 대형 펀드 여부를 결정합니다.",
+    "synonyms": [
+      "AUM",
+      "순자산총액",
+      "운용규모",
+      "초대형 ETF",
+      "AUM 1위",
+      "미국 대형 펀드"
+    ],
+    "sample_values": [
+      "707510000.0",
+      "193510000.0",
+      "8014860000.0"
+    ],
+    "sample_queries": [
+      "미국에서 규모(AUM) 제일 큰 ETF 순위",
+      "AUM 1000억 달러 이상 초대형 ETF",
+      "운용자산 규모 큰 미국 ETF 목록"
+    ]
+  },
+  {
+    "column_name": "du_val_1d",
+    "column_korean_name": "1일 거래대금 (달러 유동성)",
+    "data_type": "NUMERIC(25, 4)",
+    "description": "당일 하루 거래대금(달러 단위)입니다.",
+    "synonyms": [
+      "거래대금",
+      "달러거래대금",
+      "유동성"
+    ],
+    "sample_values": [
+      "361097",
+      "188796",
+      "33213578"
+    ],
+    "sample_queries": [
+      "미국 증시 하루 거래대금 상위 ETF",
+      "유동성 풍부한 해외 ETF"
+    ]
+  },
+  {
+    "column_name": "du_vol_1d",
+    "column_korean_name": "1일 거래량",
+    "data_type": "NUMERIC(25, 4)",
+    "description": "당일 거래 주식수(주 단위)입니다.",
+    "synonyms": [
+      "거래량",
+      "체결량"
+    ],
+    "sample_values": [
+      "5445",
+      "5626",
+      "460569"
+    ],
+    "sample_queries": [
+      "미국 시장 거래량 제일 많은 ETF"
+    ]
+  },
+  {
+    "column_name": "du_clpr_base_dt",
+    "column_korean_name": "종가 산출 기준일자",
+    "data_type": "DATE",
+    "description": "종가가 체결된 기준일자(YYYY-MM-DD)입니다.",
+    "synonyms": [
+      "종가기준일"
+    ],
+    "sample_values": [
+      "2026-06-16",
+      "2026-06-03",
+      "2026-05-07"
+    ],
+    "sample_queries": [
+      "종가 기준일자"
+    ]
+  },
+  {
+    "column_name": "du_clpr_src",
+    "column_korean_name": "종가 소스",
+    "data_type": "VARCHAR(50)",
+    "description": "종가 데이터 제공 출처입니다.",
+    "synonyms": [
+      "데이터소스",
+      "가격출처"
+    ],
+    "sample_values": [
+      "pd65n101.tday_clpr"
+    ],
+    "sample_queries": [
+      "가격 출처"
+    ]
+  },
+  {
+    "column_name": "du_nav_base_dt",
+    "column_korean_name": "NAV 산출 기준일자",
+    "data_type": "DATE",
+    "description": "NAV가 산출된 기준일자(YYYY-MM-DD)입니다.",
+    "synonyms": [
+      "NAV기준일"
+    ],
+    "sample_values": [
+      "2026-06-14"
+    ],
+    "sample_queries": [
+      "NAV 기준일"
+    ]
+  },
+  {
+    "column_name": "du_base_dt_match_yn",
+    "column_korean_name": "기준일자 일치여부",
+    "data_type": "VARCHAR(5)",
+    "description": "종가 산출일자와 NAV 산출일자가 일치하는지 여부(Y/N)입니다.",
+    "synonyms": [
+      "일자일치여부"
+    ],
+    "sample_values": [
+      "N"
+    ],
+    "sample_queries": [
+      "기준일자 일치 여부"
+    ]
+  },
+  {
+    "column_name": "du_upt_dt",
+    "column_korean_name": "성과정보 갱신일자",
+    "data_type": "DATE",
+    "description": "시세 및 성과 정보가 최종 갱신된 일자입니다.",
+    "synonyms": [
+      "시세갱신일"
+    ],
+    "sample_values": [
+      "2026-06-16",
+      "2026-06-04",
+      "2026-05-08"
+    ],
+    "sample_queries": [
+      "시세 갱신일자"
+    ]
+  }
+]

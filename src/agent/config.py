@@ -16,17 +16,23 @@ from dataclasses import dataclass, field
 from dotenv import load_dotenv
 
 # 기본 경로 계산
-# AGENT_DIR: c:/.../triangle/agent
+# AGENT_DIR: repo/src/agent
 AGENT_DIR = Path(__file__).resolve().parent
-# TRIANGLE_ROOT: c:/.../triangle
-TRIANGLE_ROOT = AGENT_DIR.parent
-# DATA_DIR: c:/.../triangle/data
-DATA_DIR = TRIANGLE_ROOT / "data"
-# DB_PATH: c:/.../triangle/data/db/finance_master.db
+# REPO_ROOT: repo  (제출 레포 루트 — ontology/ 등이 이 아래 있다)
+REPO_ROOT = AGENT_DIR.parents[1]
+# SRC_DIR: repo/src  (src/ontology 패키지를 찾으려면 sys.path에 있어야 한다)
+SRC_DIR = AGENT_DIR.parent
+# ONTOLOGY_DIR: repo/ontology  (TTL 5개 — 대회 제출 규격 트리, 데이터 이관과 무관하게 고정)
+ONTOLOGY_DIR = REPO_ROOT / "ontology"
+# DATA_DIR: repo/src/data  (※ 네이버클라우드 DB 전환 대상 — 온톨로지는 이 경로에 의존하지 않는다)
+DATA_DIR = SRC_DIR / "data"
+# DB_PATH: repo/src/data/db/finance_master.db
 DEFAULT_DB_PATH = DATA_DIR / "db" / "finance_master.db"
 
-# 상위 경로를 sys.path에 추가하여 data/endpoint 등 모듈 참조 가능하게 설정
-for path in [str(AGENT_DIR), str(TRIANGLE_ROOT), str(DATA_DIR)]:
+TRIANGLE_ROOT = REPO_ROOT   # 기존 이름 호환용 별칭 (다른 모듈이 import 중)
+
+# 상위 경로를 sys.path에 추가하여 endpoint/src.ontology 등 모듈 참조 가능하게 설정
+for path in [str(AGENT_DIR), str(REPO_ROOT), str(SRC_DIR), str(DATA_DIR)]:
     if path not in sys.path:
         sys.path.insert(0, path)
 
