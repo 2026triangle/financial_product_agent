@@ -1,14 +1,18 @@
 '''
 query_parser.py
-v2.0 (Task 8 — 온톨로지 런타임 연동 완성본)
+v4.0 (Task 10 — 다중 카테고리 필터 버그 수정)
 A1
 가장 처음 사용자의 질의를 받고, 질의의 카테고리를 나누고 적절한 쿼리 데이터 첨부 에이전트를 호출하는 에이전트임
 
-이 파일은 2026triangle/agent(개발 레포) 174줄 버전을 이식한 뒤, query_parser_instructions/qp_spec.md
-Step 2~4를 반영해 확장했다:
-  - PROMPT: 주어/술어 명시적 열거 + "값 가정이 있으면 반드시 트리플화" 강화 + 채권분류 예시 추가
-  - normalize_value로 값 정규화, resolve_category로 채권분류 컬럼 라우팅, expand_rank_filter로 부등호 전개
-  - meta_schema_table이 비어 있으면 search_finance_metadata를 호출하지 않는 런타임 가드
+이 파일은 2026triangle/agent(개발 레포) 174줄 버전을 이식한 뒤 여러 차례 확장했다:
+  - Task 8(qp_spec.md): PROMPT 주어/술어 명시적 열거, resolve_category로 채권분류 컬럼 라우팅,
+    expand_rank_filter로 부등호 전개, meta_schema_table이 비어 있으면 search_finance_metadata를
+    호출하지 않는 런타임 가드
+  - Task 9(qp_task9_json.md): _extract_json을 균형매칭 스캐너로 교체, {{retry_hint}} 플레이스홀더로
+    재시도 프롬프트 안정화
+  - Task 10(qp_task10_multicategory.md): 값 정규화를 normalize_value 대신
+    OntologyValidator.resolve_filter_value()로 전환(개념없음/변환불필요/값없음 구분), 필터를
+    트리플 주어가 지목한 카테고리에만 적용(_build_filters로 분리)
 '''
 
 import json
@@ -105,13 +109,23 @@ RETRY_HINT = (
 
 # 트리플 목적어에서 술어 로컬명 → OntologyValidator 통제 어휘 개념명 매핑.
 # fp:hasBondCategory는 라벨마다 컬럼(대/중/소분류)이 달라 resolve_category()로 별도 처리한다.
-# fp:isSellable은 통제 어휘 클래스가 아니라 xsd:boolean이라 normalize_value 대상이 아니다
+# fp:isSellable은 통제 어휘 클래스가 아니라 xsd:boolean이라 resolve_filter_value 대상이 아니다
 # (판매가능 판정은 상품군마다 다른 컬럼/문자열이며 common.ttl 주석 참고 — 이 작업 범위 밖).
 _PREDICATE_TO_CONCEPT = {
     "hasCreditRating": "CreditRating",
     "hasRiskGrade": "RiskGrade",
     "investsInAssetClass": "AssetClass",
     "investsInRegion": "Region",
+}
+
+# 클래스 로컬명 → 카테고리 문자열 역매핑. OntologyValidator.CATEGORY_TO_CLASS의 역방향
+# (qp_task10_multicategory.md §2.1). 트리플의 주어가 이미 상품군을 지목하고 있을 때
+# (fp:Bond/fp:DomesticETF/fp:ForeignETF/fp:Fund) 그 카테고리에만 필터를 적용하기 위함이다.
+_CLASS_TO_CATEGORY = {
+    "Bond": "domestic_bond",
+    "DomesticETF": "domestic_etf",
+    "ForeignETF": "foreign_etf",
+    "Fund": "fund",
 }
 
 # 서열이 있는(부등호 전개가 되는) 개념만 대상으로 한다 (qp_spec.md §4.3).
@@ -299,6 +313,138 @@ class QueryParser(Agent):
         # 싱글톤을 보장 — endpoint/meta_column_table.py 싱글톤 관습과 동일)
         self.validator = get_ontology_validator()
 
+    def _build_filters(self, triples, tables, think_trace):
+        """검증을 통과한 트리플들을 SQL 필터로 조립한다. LLM 없이 단위 테스트할 수
+        있도록 query()에서 분리했다 (qp_task10_multicategory.md §2.6).
+
+        반환: (filters, excluded_categories)
+
+        다중 카테고리 버그(§0/§1 버그 A) 수정: 트리플의 주어가 이미 상품군을 지목하고
+        있으면(fp:Bond/fp:DomesticETF/fp:ForeignETF/fp:Fund) 그 카테고리에만 적용한다.
+        예전에는 주어를 버리고 tables의 모든 카테고리와 교차 검사해서, 채권 신용등급이
+        ETF 테이블에도 던져지며 엉뚱하게 걸러졌다. fp:Product/fp:ETF처럼 상품군을
+        특정하지 않는 주어만 모든 카테고리를 순회하는 폴백 경로를 탄다.
+
+        exclusion 판정(§2.3, §2.5) — resolve_filter_value()가 구분해주는 5가지 reason 중:
+          - value_not_in_table: 개념은 있는데 "이 값"만 이 테이블에 없다(원자재@펀드).
+            주어가 그 카테고리를 지목한 경우(subject_scoped)에만 그 카테고리를 제외한다
+            (Task 8 회귀 테스트 케이스 5 — 반드시 유지).
+          - not_in_table: 개념 자체가 이 테이블에 없다(자산군@채권, 위험등급@해외ETF).
+            §2.5가 명시한 대로 이 경우는 절대 카테고리를 제외하지 않는다 — "이 값이
+            없다"가 아니라 "이 조건을 이 테이블에서는 판단할 수 없다"이기 때문이다.
+            (주어가 카테고리를 지목했든 폴백 경로든 동일하게 제외하지 않는다.)
+          - 폴백 경로(subject_scoped=False)에서는 reason과 무관하게 어떤 카테고리도
+            제외하지 않는다 — 안 맞는 조합은 조용히 건너뛰고 think_trace에만 남긴다.
+        """
+        filters = []
+        excluded_categories = set()
+
+        for triple in triples:
+            split = _split_triple(triple)
+            if split is None:
+                continue
+            subj, pred, obj = split
+            subj_local = subj.split(":", 1)[-1] if ":" in subj else subj
+            pred_local = pred.split(":", 1)[-1] if ":" in pred else pred
+
+            own_category = _CLASS_TO_CATEGORY.get(subj_local)
+            if own_category is None:
+                # 주어가 4개 클래스 중 어디에도 안 걸린다(fp:Product/fp:ETF 등 상품군을
+                # 특정하지 않는 클래스) — 이때만 모든 카테고리를 순회하는 폴백을 탄다.
+                targets = dict(tables)
+                subject_scoped = False
+            elif own_category in tables:
+                targets = {own_category: tables[own_category]}   # 주어가 지목한 카테고리에만 적용
+                subject_scoped = True
+            else:
+                # 주어가 특정 카테고리(예: fp:Bond → domestic_bond)를 명확히 지목했는데
+                # 그 카테고리가 tables(LLM이 뽑은 category 배열)에 없다 — LLM이 category
+                # 배열과 트리플 주어를 서로 안 맞게 뽑아낸 경우다. 이걸 dict(tables) 폴백으로
+                # 흘리면(예전 버그) 채권 전용 값(신용등급 등)이 엉뚱하게 다른 상품군(예: 펀드)
+                # 테이블 필터로 새어나간다 — fp:Product 같은 진짜 무지목 주어와는 성격이
+                # 다르므로 폴백하지 않고 이 트리플 자체를 건너뛴다.
+                think_trace.append(
+                    f"'{subj}'는 '{own_category}'를 지목하지만 이번 질의 카테고리에 없어 이 조건은 건너뜀"
+                )
+                targets = {}
+                subject_scoped = True
+
+            if pred_local == "hasBondCategory":
+                # hasBondCategory의 domain은 fp:Bond뿐이라 정상 흐름(validate_triples를
+                # 통과한 트리플)에서 subj_local은 항상 "Bond"다. 하지만 이 메서드 자체는
+                # (단위 테스트나 방어적 관점에서) 임의의 주어로 호출될 수 있고, 그 경우
+                # own_category가 None인 폴백 분기(targets=dict(tables))를 타면 targets에
+                # "domestic_bond" 키가 아예 없을 수도 있다 — targets[category]로 직접
+                # 참조하면 KeyError로 크래시한다(교차검증에서 지적됨). targets.get()으로
+                # 안전하게 조회하고 없으면 건너뛴다.
+                category = "domestic_bond"
+                table = targets.get(category)
+                if table is None:
+                    think_trace.append(
+                        f"'{obj}'는 채권분류 값이지만 이번 질의 카테고리에 'domestic_bond'가 "
+                        f"없어 이 조건은 건너뜀"
+                    )
+                    continue
+                info = self.validator.resolve_category(obj)
+                if info is None:
+                    continue
+                think_trace.append(
+                    f"채권분류 컬럼 라우팅: '{obj}' → {info['column']} = '{info['value']}' (level={info['level']})"
+                )
+                filters.append({
+                    "column": info["column"], "op": "=", "values": [info["value"]],
+                    "source": "ontology", "concept": "BondCategory",
+                    "category": category, "table": table,
+                })
+                if info.get("ambiguous"):
+                    think_trace.append(
+                        f"'{obj}'는 레벨 간 동명이인이 있음(후보: {info['ambiguous']}) — "
+                        f"상위 레벨({info['level']})을 기본값으로 사용"
+                    )
+                continue
+
+            concept = _PREDICATE_TO_CONCEPT.get(pred_local)
+            if concept is None:
+                continue
+
+            for category, table in targets.items():
+                res = self.validator.resolve_filter_value(concept, obj, table)
+                reason = res["reason"]
+
+                if reason == "as_is":
+                    think_trace.append(
+                        f"값 사용: '{res['value']}' ({concept}) → {table}:{res['value']} "
+                        f"(라벨이 원천값, 변환 불필요)"
+                    )
+                    filters.append({
+                        "column": None, "op": "=", "values": [res["value"]],
+                        "source": "ontology", "concept": concept,
+                        "category": category, "table": table,
+                    })
+                elif reason == "normalized":
+                    think_trace.append(f"값 정규화: '{obj}' ({concept}) → {table}:{res['value']}")
+                    filters.append({
+                        "column": None, "op": "=", "values": [res["value"]],
+                        "source": "ontology", "concept": concept,
+                        "category": category, "table": table,
+                    })
+                elif reason == "not_in_table":
+                    # 실제로 카테고리를 제외하지 않는다 — "이 조건을 판단할 수 없다"일 뿐이다.
+                    think_trace.append(
+                        f"{table}({category})에는 {concept} 개념 자체가 없어 이 조건은 건너뜀"
+                    )
+                elif reason == "value_not_in_table":
+                    think_trace.append(
+                        f"'{obj}'는 {table}({category})에 없는 값이라 '{category}' 카테고리를 결과에서 제외"
+                    )
+                    if subject_scoped:
+                        excluded_categories.add(category)
+                elif reason == "unknown_value":
+                    # 방어용 경로. 정상 흐름에서는 validate_triples()가 먼저 걸러낸다.
+                    think_trace.append(f"'{obj}'는 {concept}의 알려진 값이 아님 (예상치 못한 경로)")
+
+        return filters, excluded_categories
+
     def query(self, query):
         think_trace = []
 
@@ -398,54 +544,15 @@ class QueryParser(Agent):
                 logger.warning(f"알 수 없는 카테고리라 소스 테이블을 해석하지 못했습니다: '{category}'")
                 think_trace.append(f"카테고리 '{category}'의 소스 테이블을 찾지 못해 제외")
 
-        # 5) 트리플별 값 정규화 / 채권분류 컬럼 라우팅 (qp_spec.md §4.1, §4.2)
-        filters = []
-        excluded_categories = set()
-        for triple in triples:
-            split = _split_triple(triple)
-            if split is None:
-                continue
-            _subj, pred, obj = split
-            pred_local = pred.split(":", 1)[-1] if ":" in pred else pred
+        # 5) 트리플별 값 정규화 / 채권분류 컬럼 라우팅 (qp_task10_multicategory.md §2, §3)
+        filters, excluded_categories = self._build_filters(triples, tables, think_trace)
 
-            if pred_local == "hasBondCategory":
-                info = self.validator.resolve_category(obj)
-                if info is None:
-                    continue
-                think_trace.append(
-                    f"채권분류 컬럼 라우팅: '{obj}' → {info['column']} = '{info['value']}' (level={info['level']})"
-                )
-                filters.append({
-                    "column": info["column"], "op": "=", "values": [info["value"]],
-                    "source": "ontology", "concept": "BondCategory",
-                })
-                if info.get("ambiguous"):
-                    think_trace.append(
-                        f"'{obj}'는 레벨 간 동명이인이 있음(후보: {info['ambiguous']}) — "
-                        f"상위 레벨({info['level']})을 기본값으로 사용"
-                    )
-                continue
-
-            concept = _PREDICATE_TO_CONCEPT.get(pred_local)
-            if concept is None:
-                continue
-
-            for category, table in tables.items():
-                normalized = self.validator.normalize_value(concept, obj, table)
-                if normalized is None:
-                    # 해당 상품군 테이블에 이 개념 자체가 없는 경우다(예: 원자재는 tb_fund에 없음).
-                    # 컷하지 않고 이 카테고리만 결과에서 제외한다 (qp_spec.md §4.1).
-                    excluded_categories.add(category)
-                    think_trace.append(
-                        f"'{obj}'는 {table}({category})에 해당 개념({concept})이 없어 "
-                        f"'{category}' 카테고리를 결과에서 제외"
-                    )
-                else:
-                    think_trace.append(f"값 정규화: '{obj}' ({concept}) → {table}:{normalized}")
-                    filters.append({
-                        "column": None, "op": "=", "values": [normalized],
-                        "source": "ontology", "concept": concept, "table": table,
-                    })
+        # excluded_categories를 tables에서 실제로 제거한다 — 그렇지 않으면 table_results/
+        # search_finance_metadata 호출만 건너뛸 뿐 resolved['tables']엔 그대로 남아서,
+        # 이 결과를 읽는 다음 단계(Text-to-SQL)가 제외됐어야 할 테이블을 계속 조회 대상으로
+        # 본다(교차검증에서 지적됨). 이 시점 이후로는 tables가 "실제로 조회할 카테고리"다.
+        if excluded_categories:
+            tables = {k: v for k, v in tables.items() if k not in excluded_categories}
 
         # 6) 부등호 질의 전개 (qp_spec.md §4.3) — best-effort.
         # numerical_verification 키는 LLM이 자유롭게 붙이므로 개념명을 알 수 없다.
@@ -467,9 +574,13 @@ class QueryParser(Agent):
                     think_trace.append(
                         f"부등호 질의 전개: numerical_verification.{key}='{val}' → {concept} IN {expanded}"
                     )
+                    # 이 경로는 개념만 알고 테이블을 모른다(qp_task10_multicategory.md §2.4) —
+                    # category/table을 명시적으로 None으로 채워서 다른 필터와 구조를 맞추되
+                    # 동작은 바꾸지 않는다.
                     filters.append({
                         "column": None, "op": "IN", "values": expanded,
                         "source": "ontology", "concept": concept,
+                        "category": None, "table": None,
                     })
                     break
 
@@ -477,9 +588,9 @@ class QueryParser(Agent):
         # search_finance_metadata를 호출하지 않는다 (BGE-M3 다운로드/무의미한 빈 검색 방지).
         table_results = {}
         if _meta_index_ready():
+            # excluded_categories는 이미 위에서 tables 자체를 걸러내는 데 반영했으므로
+            # 여기서 다시 확인할 필요가 없다.
             for category, table_name in tables.items():
-                if category in excluded_categories:
-                    continue
                 table_results[category] = search_finance_metadata(query=query, table_name=table_name)
         else:
             think_trace.append(

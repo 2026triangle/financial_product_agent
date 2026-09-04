@@ -378,7 +378,10 @@ class OntologyValidator:
         for inst in self.instances_by_concept.get(concept, []):
             value_parts = {vc.partition(":")[2] for vc in inst["value_codes"] if ":" in vc}
             alt_parts = {vc.partition(":")[2] for vc in inst["alt_value_codes"] if ":" in vc}
-            if raw_norm in value_parts or raw_norm == inst["label"] or raw_norm in inst["synonyms"]:
+            # _find_instance/resolve_filter_value와 동일하게 인스턴스 IRI 로컬명도 인정한다
+            # (교차검증에서 지적됨 — validate_triples는 통과시키는데 여기서 거부하면 불일치).
+            if (raw_norm in value_parts or raw_norm == inst["label"]
+                    or raw_norm in inst["synonyms"] or raw_norm == inst["local"]):
                 target = inst
                 break
             if raw_norm in alt_parts:
@@ -406,6 +409,106 @@ class OntologyValidator:
             if tbl == table:
                 return val
         return None
+
+    def resolve_filter_value(self, concept: str, raw: str, table: str) -> Dict[str, Any]:
+        """트리플 목적어를 특정 테이블의 SQL 필터 값으로 해석한다 (Task 10, qp_task10_multicategory.md).
+
+        normalize_value()는 "변환할 값이 없다"를 전부 None 하나로 뭉갠다. 그런데 None이
+        실제로 뜻하는 것은 세 가지다 — (1) 이 개념이 이 테이블에 아예 없음(자산군@채권),
+        (2) 정규화가 애초에 불필요함(신용등급 — 라벨이 곧 DB 원천값이라 fp:valueCode를
+        안 붙였다), (3) 개념은 있으나 이 값만 이 테이블에 없음(원자재@펀드). 호출부가
+        (1)/(2)/(3)을 구분 못 하면, (2)를 (1)로 오인해서 "신용등급 개념이 채권에 없다"는
+        사실과 반대인 판단을 내리고 필터를 통째로 날려버린다(다중 카테고리 질의 버그).
+
+        normalize_value()는 건드리지 않는다 — 이 메서드는 그 옆에 추가하는 새 조회
+        창구다. 내부적으로 normalize_value와 같은 인덱스(fp:valueCode/fp:altValueCode)와
+        헬퍼(_find_instance/_strip_prefix)를 재사용하지만, 판정 결과를 구분해서 돌려준다.
+
+        return {
+            "applicable": bool,       # 이 (값, 테이블) 조합으로 필터를 만들 수 있는가
+            "value": str | None,      # 필터에 넣을 값
+            "reason": str,            # unknown_concept / unknown_value / as_is /
+                                      # not_in_table / normalized / value_not_in_table
+            "concept": str,
+        }
+
+        판정 순서가 중요하다 — "as_is"를 "not_in_table"보다 먼저 봐야 한다. 개념 전체가
+        (신용등급처럼) 아무 테이블에도 fp:valueCode/fp:altValueCode가 없으면, 그건
+        "이 테이블에 없다"가 아니라 "변환이 필요 없다"이므로 라벨을 그대로 쓴다.
+
+        raw가 이미 대상 테이블 자신의 fp:valueCode(peer 값) 자체인 경우, 그 값을 그대로
+        반환한다 — 이건 normalize_value()에서 이미 고친 Region 버그(한 테이블에 원천값이
+        여러 개 몰릴 때 raw가 어떤 값이든 항상 첫 값을 반환해버리던 문제, 예:
+        Region_Europe의 tb_foreign_etf 쪽에 Europe/Germany/UK/...가 모두 있는데 raw="Germany"를
+        물어도 "Europe"이 나와버림)와 정확히 같은 함정이라 여기서도 같은 방식으로 막는다.
+        _find_instance만으로는 raw가 label/synonym으로 매칭됐는지 value_codes 자체로
+        매칭됐는지 alt_value_codes(별칭)로 매칭됐는지 구분이 안 되므로, normalize_value와
+        동일하게 이 메서드 안에서 직접 매칭한다(_find_instance를 통째로 재사용하지 않음).
+        """
+        concept = _strip_prefix(concept)
+        raw_norm = raw.strip()
+        insts = self.instances_by_concept.get(concept, [])
+
+        if not insts:
+            return {"applicable": False, "value": None, "reason": "unknown_concept", "concept": concept}
+
+        inst = None
+        matched_as_alt = False
+        for i in insts:
+            value_parts = {vc.partition(":")[2] for vc in i["value_codes"] if ":" in vc}
+            alt_parts = {vc.partition(":")[2] for vc in i["alt_value_codes"] if ":" in vc}
+            # _find_instance와 동일하게 인스턴스 IRI 로컬명(예: 'CreditRating_AAA')도 인정한다 —
+            # validate_triples가 이미 이걸 유효한 표기로 통과시키는데 여기서 인정 안 하면
+            # 검증은 통과했는데 필터는 못 만드는(unknown_value) 불일치가 생긴다(교차검증에서 지적됨).
+            if (raw_norm in value_parts or raw_norm == i["label"]
+                    or raw_norm in i["synonyms"] or raw_norm == i["local"]):
+                inst = i
+                break
+            if raw_norm in alt_parts:
+                inst = i
+                matched_as_alt = True
+                break
+
+        if inst is None:
+            # 방어용이다 — 정상 흐름에서는 validate_triples()가 먼저 걸러낸다.
+            return {"applicable": False, "value": None, "reason": "unknown_value", "concept": concept}
+
+        # 개념 전체가 (테이블 불문) 원천값을 하나도 안 가지면 라벨이 곧 원천값이다.
+        concept_has_any_source_value = any(
+            i["value_codes"] or i["alt_value_codes"] for i in insts
+        )
+        if not concept_has_any_source_value:
+            return {"applicable": True, "value": inst["label"], "reason": "as_is", "concept": concept}
+
+        # 개념은 값을 가지지만, 이 테이블에 대해서는 어떤 인스턴스도 값을 안 가지면
+        # 이 테이블엔 개념 자체가 없는 것이다(예: 자산군@국내채권, 위험등급@해외ETF).
+        table_covered = any(
+            any(vc.partition(":")[0] == table for vc in (i["value_codes"] + i["alt_value_codes"]))
+            for i in insts
+        )
+        if not table_covered:
+            return {"applicable": False, "value": None, "reason": "not_in_table", "concept": concept}
+
+        if not matched_as_alt:
+            # raw가 이 테이블의 valueCode(peer 값) 자체라면 그대로 반환한다.
+            exact = f"{table}:{raw_norm}"
+            if exact in inst["value_codes"]:
+                return {"applicable": True, "value": raw_norm, "reason": "normalized", "concept": concept}
+
+        # 대표값(fp:valueCode)이 있으면 우선 반환한다 — 별칭(alt)으로 매칭됐거나(이름→코드
+        # 정규화), raw가 이 테이블의 valueCode 자체는 아니었던 경우(다른 테이블 라벨/동의어로
+        # 찾은 경우).
+        for vc in inst["value_codes"]:
+            tbl, _, val = vc.partition(":")
+            if tbl == table:
+                return {"applicable": True, "value": val, "reason": "normalized", "concept": concept}
+        for vc in inst["alt_value_codes"]:
+            tbl, _, val = vc.partition(":")
+            if tbl == table:
+                return {"applicable": True, "value": val, "reason": "normalized", "concept": concept}
+
+        # 개념은 이 테이블을 커버하지만(다른 값들은 있음), 이 값만 이 테이블에 없다.
+        return {"applicable": False, "value": None, "reason": "value_not_in_table", "concept": concept}
 
     # --------------------------------------------------------------------------
     # 채권분류(BondCategory) DAG 전용 조회 — Task 4 (ot_instructions/ot_v1.md)
