@@ -32,17 +32,17 @@ TEXT_MISSING_PLACEHOLDERS = {
 }
 
 DATE_COLUMNS_MAP = {
-    "PRBD01N001_국내채권마스터_20260711_datarows.xlsx": [
-        "ISU_DT", "MAT_DT", "PD_STD_INFO_UPDATE", "CRD_GRD_DT"
-    ],
-    "PREF01N001_국내ETF마스터_20260711_datarows.xlsx": [
-        "cu_upt_dt", "du_upt_dt", "pd_lste_dt", "pd_lstg_dt", "wu_upt_dt"
-    ],
-    "PREF02N001_해외ETF마스터_20260711_datarows.xlsx": [
-        "cu_upt_dt", "du_clpr_base_dt", "du_nav_base_dt", "du_upt_dt", "pd_lstg_dt", "wu_upt_dt"
-    ],
-    "PRFD01N001_공모펀드마스터_20260711_datarows.xlsx": []
+    "PRBD01N001": ["isu_dt", "mat_dt", "pd_std_info_update", "crd_grd_dt"],
+    "PREF01N001": ["cu_upt_dt", "du_upt_dt", "pd_lste_dt", "pd_lstg_dt", "wu_upt_dt"],
+    "PREF02N001": ["cu_upt_dt", "du_clpr_base_dt", "du_nav_base_dt", "du_upt_dt", "pd_lstg_dt", "wu_upt_dt"],
+    "PRFD01N001": [],
 }
+
+
+def get_date_columns(fname):
+    """파일명 전체가 아니라 접두어(PRBD01N001 등)로 매칭 — raw 파일명이 바뀌어도 안 깨지게."""
+    prefix = fname.upper().split("_")[0]
+    return DATE_COLUMNS_MAP.get(prefix, [])
 
 
 # =====================================================================================
@@ -110,7 +110,7 @@ def parse_date_to_iso(val):
 
 def standardize_dates(df, fname):
     date_transforms = {}
-    for col in DATE_COLUMNS_MAP.get(fname, []):
+    for col in get_date_columns(fname):
         if col in df.columns:
             orig_series = df[col].copy()
             conv_series = orig_series.apply(parse_date_to_iso)
@@ -143,7 +143,7 @@ def clean_column_missing_values(series, col_name, filename):
 
             if v_str in TEXT_MISSING_PLACEHOLDERS:
                 return np.nan
-            if col_name == 'CURR_CD' and v_str == '000':
+            if col_name == 'curr_cd' and v_str == '000':
                 return np.nan
             if col_name == 'itm_eng_nm' and v_str == '0':
                 return np.nan
@@ -187,8 +187,8 @@ def transform_bond(df):
     """
     mod_info = {}
 
-    if 'PD_EVCO_CRD_GRD' in df.columns:
-        orig = df['PD_EVCO_CRD_GRD'].copy()
+    if 'pd_evco_crd_grd' in df.columns:
+        orig = df['pd_evco_crd_grd'].copy()
 
         def split_grades(v):
             if pd.isna(v):
@@ -199,20 +199,20 @@ def transform_bond(df):
             return ', '.join(parts), parts[0], len(parts)
 
         parsed = orig.apply(split_grades)
-        df['PD_EVCO_CRD_GRD'] = parsed.apply(lambda t: t[0])
-        df['PD_EVCO_CRD_GRD_MAIN'] = parsed.apply(lambda t: t[1])
-        df['PD_EVCO_CRD_GRD_CNT'] = parsed.apply(lambda t: t[2])
-        multi_cnt = int((df['PD_EVCO_CRD_GRD_CNT'] > 1).sum())
-        mod_info['PD_EVCO_CRD_GRD'] = {
+        df['pd_evco_crd_grd'] = parsed.apply(lambda t: t[0])
+        df['pd_evco_crd_grd_main'] = parsed.apply(lambda t: t[1])
+        df['pd_evco_crd_grd_cnt'] = parsed.apply(lambda t: t[2])
+        multi_cnt = int((df['pd_evco_crd_grd_cnt'] > 1).sum())
+        mod_info['pd_evco_crd_grd'] = {
             'type': '콤마 다중값 분해 (대표등급/평가사수 컬럼 신설)',
             'count': multi_cnt,
             'sample': "'AAA, AAA, AAA' -> MAIN='AAA', CNT=3"
         }
 
-    if 'AVG_ANNUAL_TAX_YIELD' in df.columns:
-        nn = int(df['AVG_ANNUAL_TAX_YIELD'].notna().sum())
-        df = df.drop(columns=['AVG_ANNUAL_TAX_YIELD'])
-        mod_info['AVG_ANNUAL_TAX_YIELD'] = {
+    if 'avg_annual_tax_yield' in df.columns:
+        nn = int(df['avg_annual_tax_yield'].notna().sum())
+        df = df.drop(columns=['avg_annual_tax_yield'])
+        mod_info['avg_annual_tax_yield'] = {
             'type': '죽은 컬럼 삭제 (분산=0)',
             'count': nn,
             'sample': "존재값 전부 0.0 고정 -> 컬럼 삭제"
@@ -570,6 +570,7 @@ def run_preprocessing():
             continue
 
         df = pd.read_excel(file_path)
+        df.columns = [c.lower() for c in df.columns]
         orig_shape = df.shape
 
         df, dropped_cols, stripped_info = strip_whitespace_and_drop_empty(df)
@@ -583,13 +584,13 @@ def run_preprocessing():
             df[col] = cleaned_series
 
         mod_info = {}
-        if fname.startswith("PRBD01N001"):
+        if fname.upper().startswith("PRBD01N001"):
             df, mod_info = transform_bond(df)
-        elif fname.startswith("PREF01N001"):
+        elif fname.upper().startswith("PREF01N001"):
             df, mod_info = transform_domestic_etf(df)
-        elif fname.startswith("PREF02N001"):
+        elif fname.upper().startswith("PREF02N001"):
             df, mod_info = transform_foreign_etf(df)
-        elif fname.startswith("PRFD01N001"):
+        elif fname.upper().startswith("PRFD01N001"):
             df, mod_info = transform_public_fund(df)
 
         final_shape = df.shape

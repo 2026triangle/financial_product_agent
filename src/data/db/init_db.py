@@ -168,6 +168,55 @@ class DBConnector:
             cursor.executemany(sql, batch)
         self.conn.commit()
 
+    def sync_columns(self, table_name: str, columns: List[str], data_rows: List[Tuple]):
+        """
+        적재하려는 데이터의 컬럼과 테이블의 실제 컬럼을 비교해서, 테이블에 없는 컬럼은
+        자동으로 ALTER TABLE ADD COLUMN으로 추가한다. raw 데이터 구조가 바뀌어도(컬럼 추가)
+        schema.sql을 매번 손으로 안 고쳐도 되게 하기 위함. schema.sql은 여전히 "정식 문서"로
+        유지하고, 자동 추가된 컬럼은 여유 될 때 정식 타입/코멘트로 반영 권장.
+        """
+        if self.db_type not in ("sqlite", "sqlite3"):
+            logger.warning(f"[{table_name}] sync_columns는 현재 SQLite만 지원합니다. 수동 확인 필요.")
+            return
+        if not data_rows:
+            return
+
+        cursor = self.conn.cursor()
+        cursor.execute(f"PRAGMA table_info({table_name})")
+        existing_cols = {row[1].lower() for row in cursor.fetchall()}
+
+        missing = [c for c in columns if c.lower() not in existing_cols]
+        if not missing:
+            return
+
+        col_index = {c: i for i, c in enumerate(columns)}
+        for col in missing:
+            sample = None
+            idx = col_index[col]
+            for row in data_rows:
+                v = row[idx]
+                if v is not None:
+                    sample = v
+                    break
+            sql_type = self._guess_sql_type(sample)
+            logger.warning(
+                f"⚠️  [{table_name}] 스키마에 없던 컬럼을 자동 추가: {col} ({sql_type}) "
+                f"— 나중에 db/schema.sql에도 정식 타입/설명 반영 권장"
+            )
+            cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {col} {sql_type}")
+        self.conn.commit()
+
+    @staticmethod
+    def _guess_sql_type(sample: Any) -> str:
+        """실제 데이터 샘플 값으로 대략적인 SQL 타입을 추정 (참고용, 정밀 타입은 schema.sql에서 직접 확정)"""
+        if isinstance(sample, bool):
+            return "VARCHAR(10)"
+        if isinstance(sample, int):
+            return "INTEGER"
+        if isinstance(sample, float):
+            return "NUMERIC(18, 4)"
+        return "VARCHAR(255)"
+
     def close(self):
         if self.conn:
             self.conn.close()
@@ -210,16 +259,42 @@ class DataLoader:
 
     def load_bond_data(self) -> Tuple[List[str], List[Tuple]]:
         """1. 국내채권 마스터 데이터 로드"""
-        fp = self.find_file("PRBD01N001_*_datarows.xlsx")
+        fp = self.find_file("prbd01n001_data.xlsx")
         logger.info(f"국내채권 마스터 로드 중: {os.path.basename(fp)}")
         df = pd.read_excel(fp)
-        
+
         # 컬럼명을 소문자로 통일하여 매핑
         df.columns = [c.lower() for c in df.columns]
-        
+
         # 완전히 빈 행 제거
         df = df.dropna(subset=['pd_no'])
-        
+
+        # --- pd_no 중복 처리 ---
+        # 새 raw 데이터는 채권 1개(pd_no)당 시장구분(pd_exg_mkt: 장내/장외)별로
+        # 별도의 시세 레코드가 붙어 있음. 채권 정체성 컬럼은 행마다 동일하고
+        # 시세 관련 컬럼만 시장별로 다르게 채워져 있음.
+        # -> 장내(거래소) 행을 대표로 채택, 없으면 info_seq가 가장 작은 장외 행을 채택.
+        if 'pd_exg_mkt' in df.columns:
+            # 정렬 우선순위: 장내(0) > 장외(1), 그다음 info_seq 오름차순
+            market_rank = df['pd_exg_mkt'].map(lambda v: 0 if v == '장내' else 1)
+            sort_cols = pd.DataFrame({
+                '_market_rank': market_rank,
+                '_info_seq': pd.to_numeric(df.get('info_seq'), errors='coerce').fillna(9999) if 'info_seq' in df.columns else 0,
+            }, index=df.index)
+            df = df.assign(**{c: sort_cols[c] for c in sort_cols.columns})
+            df = df.sort_values(['pd_no', '_market_rank', '_info_seq'])
+            before = len(df)
+            df = df.drop_duplicates(subset=['pd_no'], keep='first')
+            after = len(df)
+            logger.info(f"pd_no 중복 제거: {before}행 -> {after}행 (시장구분 우선순위 적용)")
+            df = df.drop(columns=['_market_rank', '_info_seq'])
+        else:
+            before = len(df)
+            df = df.drop_duplicates(subset=['pd_no'], keep='first')
+            after = len(df)
+            if before != after:
+                logger.warning(f"pd_exg_mkt 컬럼 없음 — 단순 first-keep으로 pd_no 중복 제거: {before}행 -> {after}행")
+
         # 데이터프레임 클린징
         cols = list(df.columns)
         rows = [tuple(self.clean_value(v) for v in row) for row in df.values]
@@ -227,7 +302,7 @@ class DataLoader:
 
     def load_domestic_etf_data(self) -> Tuple[List[str], List[Tuple]]:
         """2. 국내ETF 마스터 데이터 로드"""
-        fp = self.find_file("PREF01N001_*_datarows.xlsx")
+        fp = self.find_file("pref01n001_data.xlsx")
         logger.info(f"국내ETF 마스터 로드 중: {os.path.basename(fp)}")
         df = pd.read_excel(fp)
         df.columns = [c.lower() for c in df.columns]
@@ -239,7 +314,7 @@ class DataLoader:
 
     def load_foreign_etf_data(self) -> Tuple[List[str], List[Tuple]]:
         """3. 해외ETF 마스터 데이터 로드"""
-        fp = self.find_file("PREF02N001_*_datarows.xlsx")
+        fp = self.find_file("pref02n001_data.xlsx")
         logger.info(f"해외ETF 마스터 로드 중: {os.path.basename(fp)}")
         df = pd.read_excel(fp)
         df.columns = [c.lower() for c in df.columns]
@@ -248,33 +323,42 @@ class DataLoader:
         cols = list(df.columns)
         rows = [tuple(self.clean_value(v) for v in row) for row in df.values]
         return cols, rows
-
+        
     def load_fund_data(self) -> Tuple[Tuple[List[str], List[Tuple]], Tuple[List[str], List[Tuple]]]:
         """
         4. 공모펀드 마스터 2단계 1:N 분리 로드:
-           - tb_fund (본 테이블, itm_no PK, 11,138건)
-           - tb_fund_attribute (속성 테이블, itm_no + prfd_attr_cd PK, 95,618건)
+        - tb_fund (본 테이블, itm_no PK)
+        - tb_fund_attribute (속성 테이블, itm_no + prfd_attr_cd PK)
+
+        ※ 26.08.24 raw 교체: prfd_attr_cd(행당 1개, long format) -> prfd_attr_cds(쉼표구분 목록,
+        wide format)로 원본 구조가 바뀜. tb_fund_attribute 스키마/PK는 그대로 유지하기 위해
+        여기서 쉼표 목록을 예전처럼 (itm_no, prfd_attr_cd) 행들로 풀어준다(explode).
         """
-        fp = self.find_file("PRFD01N001_*_datarows.xlsx")
+        fp = self.find_file("prfd01n001_data.xlsx")
         logger.info(f"공모펀드 마스터 로드 및 2단계(1:N) 분리 중: {os.path.basename(fp)}")
         df = pd.read_excel(fp)
         df.columns = [c.lower() for c in df.columns]
 
-        # 1) 결측치 row(itm_no 누락) 제거
         df = df.dropna(subset=['itm_no'])
 
-        # 2) 펀드 본 테이블: prfd_attr_cd 제외 및 itm_no 기준 중복 제거 (11,138건)
-        fund_main_cols = [c for c in df.columns if c != 'prfd_attr_cd']
+        # prfd_attr_cnt는 파생값이라 굳이 저장 안 해도 되고, prfd_attr_search_text는
+        # MCT 검색에 쓸모 있으니 본 테이블에 남긴다.
+        fund_main_cols = [c for c in df.columns if c not in ('prfd_attr_cds', 'prfd_attr_cnt')]
         df_fund_main = df.drop_duplicates(subset=['itm_no'])[fund_main_cols]
         fund_main_rows = [tuple(self.clean_value(v) for v in row) for row in df_fund_main.values]
 
-        # 3) 펀드 속성 매핑 테이블: (itm_no, prfd_attr_cd) 유효 쌍 추출 (95,618건)
-        df_attr = df[['itm_no', 'prfd_attr_cd']].dropna().drop_duplicates()
+        attr_pairs = []
+        for itm_no, cds_raw in df[['itm_no', 'prfd_attr_cds']].dropna().itertuples(index=False):
+            for cd in str(cds_raw).split(','):
+                cd = cd.strip()
+                if cd:
+                    attr_pairs.append((itm_no, cd))
+
         attr_cols = ['itm_no', 'prfd_attr_cd']
+        df_attr = pd.DataFrame(attr_pairs, columns=attr_cols).drop_duplicates()
         attr_rows = [tuple(self.clean_value(v) for v in row) for row in df_attr.values]
 
         return (fund_main_cols, fund_main_rows), (attr_cols, attr_rows)
-
 
 # ------------------------------------------------------------------------------
 # 3. 데이터베이스 초기화 및 적재 오케스트레이터
@@ -317,24 +401,29 @@ def init_database(
     # (1) 국내채권 마스터
     bond_cols, bond_rows = loader.load_bond_data()
     logger.info(f"📥 tb_domestic_bond 적재 중... ({len(bond_rows):,}건)")
+    connector.sync_columns("tb_domestic_bond", bond_cols, bond_rows)
     connector.bulk_insert("tb_domestic_bond", bond_cols, bond_rows, batch_size=batch_size)
 
     # (2) 국내ETF 마스터
     etf_kr_cols, etf_kr_rows = loader.load_domestic_etf_data()
     logger.info(f"📥 tb_domestic_etf 적재 중... ({len(etf_kr_rows):,}건)")
+    connector.sync_columns("tb_domestic_etf", etf_kr_cols, etf_kr_rows)
     connector.bulk_insert("tb_domestic_etf", etf_kr_cols, etf_kr_rows, batch_size=batch_size)
 
     # (3) 해외ETF 마스터
     etf_ovrs_cols, etf_ovrs_rows = loader.load_foreign_etf_data()
     logger.info(f"📥 tb_foreign_etf 적재 중... ({len(etf_ovrs_rows):,}건)")
+    connector.sync_columns("tb_foreign_etf", etf_ovrs_cols, etf_ovrs_rows)
     connector.bulk_insert("tb_foreign_etf", etf_ovrs_cols, etf_ovrs_rows, batch_size=batch_size)
 
     # (4) 공모펀드 마스터 (본 테이블 + 속성 매핑 테이블)
     (fund_cols, fund_rows), (attr_cols, attr_rows) = loader.load_fund_data()
     logger.info(f"📥 tb_fund (본 테이블) 적재 중... ({len(fund_rows):,}건)")
+    connector.sync_columns("tb_fund", fund_cols, fund_rows)
     connector.bulk_insert("tb_fund", fund_cols, fund_rows, batch_size=batch_size)
 
     logger.info(f"📥 tb_fund_attribute (속성 매핑 테이블) 적재 중... ({len(attr_rows):,}건)")
+    connector.sync_columns("tb_fund_attribute", attr_cols, attr_rows)
     connector.bulk_insert("tb_fund_attribute", attr_cols, attr_rows, batch_size=batch_size)
 
     # 6. 메타 벡터 데이터베이스(meta_schema_table) 적재 (BGE-M3 임베딩)
