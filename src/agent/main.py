@@ -7,6 +7,7 @@ import re
 
 # model
 from core.model_manager import get_model_manager
+from agents.answer_agent import AnswerAgent
 
 # agents
 from agents.query_parser import QueryParser
@@ -44,10 +45,14 @@ def get_agents(mm):
     else:
         serious_error('get_agent : 필수 에이전트 TextToSQLAgent 로드에 실패')
 
+    if "AnswerAgent" in globals():
+        agents["Answer"] = AnswerAgent(mm)
+    else:
+        serious_error('get_agent : 필수 에이전트 AnswerAgent 로드에 실패')
+
     if SHOW_THOUTH_PROCESS:
         print("에이전트 목록 :\n{}".format("\n".join(agents.keys())))
     return agents
-
 
 def _filters_for_table(all_filters: list, table_name: str) -> list:
     """resolved.filters 중 특정 테이블에 해당하는 것만 골라낸다."""
@@ -174,9 +179,8 @@ class Agent:
             return f"죄송합니다, 조회 중 오류가 발생했습니다: {sql_results[failed_tables[0]]['error']}"
 
         curated = self._curate_sql_results(sql_results)
-        # TODO(⑥ 답변합성 에이전트 완성되면 아래 한 줄을 그걸로 교체)
-        return self._format_results_plain(query, curated)
-
+        answer_result = self.agents["Answer"].query(query, curated)
+        return answer_result["content"]
 
 if __name__ == "__main__":
     agent = Agent()

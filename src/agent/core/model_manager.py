@@ -106,7 +106,7 @@ class ModelManager:
         """
         cfg: ModelConfig = config.model
 
-        self.api_key = api_key or cfg.api_key or os.getenv("OPENAI_API_KEY", "EMPTY")
+        self.api_key = api_key or cfg.api_key or os.getenv("CLOVA_API_KEY", "EMPTY")       
         self.base_url = base_url or cfg.base_url
         self.model_name = model_name or cfg.default_model
         self.temperature = temperature if temperature is not None else cfg.temperature

@@ -52,9 +52,9 @@ else:
 @dataclass
 class ModelConfig:
     """LLM 모델 호출 관련 설정"""
-    api_key: str = field(default_factory=lambda: os.getenv("OPENAI_API_KEY", ""))
-    base_url: str = field(default_factory=lambda: os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1"))
-    default_model: str = field(default_factory=lambda: os.getenv("DEFAULT_MODEL", "gpt-4o-mini"))
+    api_key: str = field(default_factory=lambda: os.getenv("CLOVA_API_KEY", ""))
+    base_url: str = field(default_factory=lambda: os.getenv("CLOVA_BASE_URL", "https://clovastudio.stream.ntruss.com/v1/openai/"))
+    default_model: str = field(default_factory=lambda: os.getenv("CLOVA_MODEL", "HCX-005"))
     temperature: float = float(os.getenv("DEFAULT_TEMPERATURE", "0.1"))
     max_tokens: int = int(os.getenv("DEFAULT_MAX_TOKENS", "4096"))
     timeout: float = float(os.getenv("DEFAULT_TIMEOUT", "60.0"))
