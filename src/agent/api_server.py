@@ -91,7 +91,8 @@ def answer(question_id: str = Query(...), question: str = Query(...)):
             sql_results[table_name] = result
 
         curated = _agent._curate_sql_results(sql_results)
-        final_text = _agent._format_results_plain(question, curated)
+        answer_result = _agent.agents["Answer"].query(question, curated)
+        final_text = answer_result["content"]
 
         return JSONResponse({
             "question_id": question_id,
