@@ -184,5 +184,11 @@ class Agent:
         return answer_result["content"]
 
 if __name__ == "__main__":
+    # Step 3(qp_task15_ratelimit.md §4) — CLI 경로 예외 방어. 429 백오프가 다 소진되면
+    # model_manager가 예외를 던지는데(§2), 여기서 안 잡으면 트레이스백만 남기고 죽는다.
+    # 여러 질의를 연속 실행하는 배치 시나리오는 run_eval_queries.py 참고.
     agent = Agent()
-    print(agent.query('신용등급 AAAA인 채권 찾아줘'))
+    try:
+        print(agent.query('신용등급 AAAA인 채권 찾아줘'))
+    except Exception as e:
+        print(f"[실패] 질의 처리 중 예외 발생: {type(e).__name__}: {e}")

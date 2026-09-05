@@ -11,19 +11,80 @@ OpenAI 호환 단일 모델 관리자 (core/model_manager.py)
 ================================================================================
 """
 
+import asyncio
 import os
 import json
 import logging
-from typing import List, Dict, Any, Optional, Union, Generator, AsyncGenerator
+import random
+import time
+from typing import Callable, List, Dict, Any, Optional, Union, Generator, AsyncGenerator
 from dataclasses import dataclass, field
 
 import openai
-from openai import OpenAI, AsyncOpenAI
+from openai import (
+    OpenAI, AsyncOpenAI,
+    RateLimitError, APIStatusError, APIConnectionError, APITimeoutError,
+)
 from openai.types.chat import ChatCompletion, ChatCompletionMessage
 
 from config import config, ModelConfig
 
 logger = logging.getLogger("agent.model_manager")
+
+# --------------------------------------------------------------------------
+# 429(Rate Limit) 전용 재시도 정책 (qp_task15_ratelimit.md §2)
+# --------------------------------------------------------------------------
+# 실측(§0): SDK 자체 백오프는 0.43→0.89→1.93초로 너무 짧고 3회 만에 포기한다.
+# 429는 초 단위 쿼터 회복이 필요하므로 훨씬 긴 간격이 필요하다.
+#
+# 원안은 "2→4→8→16→32초, 최대 5회"였지만, 문항당 60초 응답 시간 예산(대회 권장치이자
+# 배점 40%에 포함, §5 Step 4)을 지키기 위해 마지막 32초 단계는 뺐다 — 4단계 백오프의
+# 합(2+4+8+16=30초)만으로도 이미 예산의 절반을 쓰므로, 5단계(총 62초)를 다 쓰면 백오프
+# 시간만으로 예산을 넘긴다. QueryParser/TextToSQL/Answer 등 문항당 LLM을 여러 번
+# 호출하는 것까지 고려하면 30초가 이미 넉넉한 상한이라고 판단했다(§8 완료 후 보고에도
+# 이 근거를 다시 적는다).
+_RATE_LIMIT_BACKOFF_SCHEDULE = (2.0, 4.0, 8.0, 16.0)
+_RATE_LIMIT_MAX_RETRIES = len(_RATE_LIMIT_BACKOFF_SCHEDULE)  # 4회 재시도(최초 시도 포함 최대 5회 호출)
+
+# 429가 아닌 재시도 가능한 에러(연결 오류·타임아웃·5xx)에 적용하는 "지금 정책" 근사치.
+# 원래 이 재시도는 OpenAI SDK 자체(client의 max_retries, 기본 짧은 지수 백오프)가
+# 처리했다. 이번에 클라이언트의 max_retries를 0으로 꺼야만(§2 "주의") 429 재시도가
+# SDK와 이 계층에서 이중으로 겹치지 않으므로, 같은 횟수(config.model.max_retries)와
+# 비슷한 크기의 짧은 백오프를 이 계층으로 그대로 옮겼다 — 정책을 바꾼 게 아니라
+# 재시도를 수행하는 위치만 옮긴 것이다. 400(BadRequestError)류는 여기 해당하지
+# 않는다 — 재시도해도 소용없으므로 아예 이 경로를 타지 않는다(아래 _call_with_retry).
+_DEFAULT_RETRY_BASE_DELAY = 0.5
+
+
+def _retry_after_seconds(exc: Exception) -> Optional[float]:
+    """429 응답의 Retry-After 헤더 값을 초 단위로 읽는다(qp_task15_ratelimit.md §2 —
+    "openai SDK 예외 객체의 response.headers 로 접근 가능"). 헤더가 없거나 숫자로
+    해석할 수 없으면 None — 호출부가 스케줄값으로 대체한다. LLM 없이 단위 테스트할 수
+    있도록 순수 함수로 둔다(가짜 예외 객체만 있으면 됨)."""
+    response = getattr(exc, "response", None)
+    headers = getattr(response, "headers", None) if response is not None else None
+    if not headers:
+        return None
+    raw = headers.get("Retry-After") if hasattr(headers, "get") else None
+    if raw is None:
+        return None
+    try:
+        value = float(raw)
+    except (TypeError, ValueError):
+        return None
+    return value if value >= 0 else None
+
+
+def _rate_limit_backoff_seconds(exc: Exception, attempt: int) -> float:
+    """429 재시도 전 대기 시간을 계산한다. Retry-After 헤더가 있으면 그 값을 그대로
+    쓰고(우선), 없으면 스케줄(2/4/8/16초)에 지터(0~10%)를 더한다. attempt는 0부터
+    시작한다(0 = 첫 번째 재시도 전 대기)."""
+    retry_after = _retry_after_seconds(exc)
+    if retry_after is not None:
+        return retry_after
+    idx = min(attempt, len(_RATE_LIMIT_BACKOFF_SCHEDULE) - 1)
+    base = _RATE_LIMIT_BACKOFF_SCHEDULE[idx]
+    return base + random.uniform(0, base * 0.1)
 
 
 @dataclass
@@ -122,11 +183,21 @@ class ModelManager:
         )
 
     def _init_clients(self) -> None:
-        """내부 동기/비동기 OpenAI 클라이언트 인스턴스 생성"""
+        """내부 동기/비동기 OpenAI 클라이언트 인스턴스 생성.
+
+        max_retries는 항상 0으로 고정한다(qp_task15_ratelimit.md §2 "주의") — 재시도는
+        이 클래스의 _call_with_retry/_acall_with_retry에서만 수행하기로 택했다. SDK
+        자체 재시도(client의 max_retries)를 켜둔 채 이 계층에서도 429를 재시도하면
+        대기 시간이 이중으로 곱해진다(§0 실측: SDK가 이미 자체적으로 0.43→0.89→1.93초로
+        3회 재시도한 뒤에야 예외가 올라오는데, 그 위에 이 계층의 2~16초 백오프까지
+        얹히면 훨씬 길어진다). self.max_retries(설정값, 기본 3)는 이제 클라이언트가
+        아니라 이 클래스의 재시도 루프(429 외 에러)가 몇 번 재시도할지를 정하는
+        용도로만 쓰인다.
+        """
         client_kwargs = {
             "api_key": self.api_key,
             "timeout": self.timeout,
-            "max_retries": self.max_retries,
+            "max_retries": 0,
         }
         if self.base_url:
             client_kwargs["base_url"] = self.base_url
@@ -253,6 +324,96 @@ class ModelManager:
         )
 
     # --------------------------------------------------------------------------
+    # 재시도 래퍼 (qp_task15_ratelimit.md §2) — SDK 자체 재시도를 껐으므로(_init_clients)
+    # 이 메서드들이 유일한 재시도 지점이다. 429는 긴 백오프로, 연결 오류·타임아웃·5xx는
+    # "지금 정책"(짧은 지수 백오프, self.max_retries회)으로, 그 외(400 등)는 재시도 없이
+    # 즉시 올린다.
+    # --------------------------------------------------------------------------
+    def _call_with_retry(self, fn: Callable, *args, **kwargs):
+        rate_limit_attempt = 0
+        other_attempt = 0
+        while True:
+            try:
+                return fn(*args, **kwargs)
+            except RateLimitError as e:
+                if rate_limit_attempt >= _RATE_LIMIT_MAX_RETRIES:
+                    logger.error(f"LLM 호출 429(RateLimitError) — {_RATE_LIMIT_MAX_RETRIES}회 재시도 소진, 예외를 올립니다.")
+                    raise
+                wait = _rate_limit_backoff_seconds(e, rate_limit_attempt)
+                rate_limit_attempt += 1
+                logger.warning(
+                    f"LLM 호출 429(RateLimitError) — {rate_limit_attempt}/{_RATE_LIMIT_MAX_RETRIES}회차 "
+                    f"재시도, {wait:.2f}초 대기"
+                )
+                time.sleep(wait)
+            except (APIConnectionError, APITimeoutError) as e:
+                if other_attempt >= self.max_retries:
+                    raise
+                wait = _DEFAULT_RETRY_BASE_DELAY * (2 ** other_attempt)
+                other_attempt += 1
+                logger.warning(
+                    f"LLM 호출 실패({type(e).__name__}) — {other_attempt}/{self.max_retries}회차 "
+                    f"재시도, {wait:.2f}초 대기"
+                )
+                time.sleep(wait)
+            except APIStatusError as e:
+                # 400(BadRequestError 포함)은 재시도해도 소용없으므로 여기 걸리지 않고
+                # 즉시 올라간다 — 5xx만 "지금 정책"으로 재시도한다.
+                status = getattr(e, "status_code", None)
+                if status is not None and status >= 500 and other_attempt < self.max_retries:
+                    wait = _DEFAULT_RETRY_BASE_DELAY * (2 ** other_attempt)
+                    other_attempt += 1
+                    logger.warning(
+                        f"LLM 호출 실패(HTTP {status}) — {other_attempt}/{self.max_retries}회차 "
+                        f"재시도, {wait:.2f}초 대기"
+                    )
+                    time.sleep(wait)
+                    continue
+                raise
+
+    async def _acall_with_retry(self, fn: Callable, *args, **kwargs):
+        """_call_with_retry의 비동기 버전 — time.sleep 대신 asyncio.sleep을 쓴다는
+        점만 다르고 재시도 정책은 동일하다."""
+        rate_limit_attempt = 0
+        other_attempt = 0
+        while True:
+            try:
+                return await fn(*args, **kwargs)
+            except RateLimitError as e:
+                if rate_limit_attempt >= _RATE_LIMIT_MAX_RETRIES:
+                    logger.error(f"Async LLM 호출 429(RateLimitError) — {_RATE_LIMIT_MAX_RETRIES}회 재시도 소진, 예외를 올립니다.")
+                    raise
+                wait = _rate_limit_backoff_seconds(e, rate_limit_attempt)
+                rate_limit_attempt += 1
+                logger.warning(
+                    f"Async LLM 호출 429(RateLimitError) — {rate_limit_attempt}/{_RATE_LIMIT_MAX_RETRIES}회차 "
+                    f"재시도, {wait:.2f}초 대기"
+                )
+                await asyncio.sleep(wait)
+            except (APIConnectionError, APITimeoutError) as e:
+                if other_attempt >= self.max_retries:
+                    raise
+                wait = _DEFAULT_RETRY_BASE_DELAY * (2 ** other_attempt)
+                other_attempt += 1
+                logger.warning(
+                    f"Async LLM 호출 실패({type(e).__name__}) — {other_attempt}/{self.max_retries}회차 "
+                    f"재시도, {wait:.2f}초 대기"
+                )
+                await asyncio.sleep(wait)
+            except APIStatusError as e:
+                status = getattr(e, "status_code", None)
+                if status is not None and status >= 500 and other_attempt < self.max_retries:
+                    wait = _DEFAULT_RETRY_BASE_DELAY * (2 ** other_attempt)
+                    other_attempt += 1
+                    logger.warning(
+                        f"Async LLM 호출 실패(HTTP {status}) — {other_attempt}/{self.max_retries}회차 "
+                        f"재시도, {wait:.2f}초 대기"
+                    )
+                    await asyncio.sleep(wait)
+                    continue
+                raise
+
+    # --------------------------------------------------------------------------
     # 동기 호출 메서드 (Sync Chat Completion & Tool Calling)
     # --------------------------------------------------------------------------
     def chat_completion(
@@ -300,7 +461,7 @@ class ModelManager:
 
         try:
             logger.debug(f"LLM 호출 시작 [Model: {target_model}, Messages: {len(messages)}건, Tools: {len(tools) if tools else 0}개]")
-            completion = self.client.chat.completions.create(**req_params)
+            completion = self._call_with_retry(self.client.chat.completions.create, **req_params)
             response = self._parse_completion_response(completion)
             logger.debug(f"LLM 응답 수신 완료 [Finish: {response.finish_reason}, ToolCalls: {len(response.tool_calls)}]")
             return response
@@ -361,7 +522,7 @@ class ModelManager:
 
         try:
             logger.debug(f"Async LLM 호출 시작 [Model: {target_model}]")
-            completion = await self.async_client.chat.completions.create(**req_params)
+            completion = await self._acall_with_retry(self.async_client.chat.completions.create, **req_params)
             response = self._parse_completion_response(completion)
             return response
         except Exception as e:
