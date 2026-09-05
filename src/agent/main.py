@@ -71,12 +71,13 @@ def _guess_identity_columns(columns):
         cl = c.lower()
         if cl.endswith("no") or cl == "itm_no":
             id_cols.append(c)
+            break
     for c in columns:
         cl = c.lower()
         if cl.endswith("nm") and c not in id_cols:
             id_cols.append(c)
             break
-    return id_cols[:2]
+    return id_cols
 
 
 def _columns_used_in_sql(sql, columns):

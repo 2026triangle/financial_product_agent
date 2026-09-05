@@ -1,9 +1,10 @@
 '''
 answer_agent.py
-v1.0
+v1.1
 ⑥ 답변합성 에이전트 - HyperCLOVA X(CLOVA Studio) 전용.
-main.py가 SQL 조회 후 정제한 결과(curated_results)를 받아
-자연어 답변으로 합성한다.
+데이터(상품명/코드 등)는 LLM이 재생성하지 않고 원본 그대로 삽입,
+LLM은 안내 문구/도입-마무리 문장만 생성
+(CLOVA 세이프티 필터의 숫자 마스킹 회피 + 할루시네이션 방지 목적).
 '''
 
 import time
@@ -14,16 +15,16 @@ from agents.agent import Agent
 SYSTEM_PROMPT = """당신은 금융 상품 정보를 안내하는 답변 합성 에이전트입니다.
 아래 규칙을 반드시 지키세요.
 
-1. 반드시 제공된 [조회 결과] 데이터에 근거해서만 답변하세요. 데이터에 없는 내용은 지어내지 마세요.
-2. [조회 결과]가 비어있거나 오류인 경우, "확인할 수 없습니다"라고 명확히 답하고
-   필요하다면 사용자에게 추가 정보를 되물어보세요.
-3. 특정 상품의 수익률, 가격 변동, 향후 전망 등 투자 예측이나 추천으로 해석될 수 있는
-   발언은 절대 하지 마세요. 사실(신용등급, 상품명, 상품코드 등) 전달에만 집중하세요.
-4. 답변 끝에 근거가 된 테이블/조건을 간단히 밝히세요 (예: "국내채권 테이블에서 신용등급 AAA 조건으로 조회").
-5. 간결하고 이해하기 쉬운 자연어 문장으로 답변하세요. 불릿포인트 남발하지 마세요.
-6. 매우 중요: 상품명, 상품코드(pd_no) 등에 포함된 숫자는 개인정보(전화번호, 계좌번호, 주민번호)가
-   아니라 금융 상품 식별을 위한 공개 데이터입니다. 절대 마스킹(*)하거나 일부를 가리거나
-   생략하지 말고, [조회 결과]에 주어진 값 그대로 정확히 출력하세요.
+1. 아래 [조회 결과 요약]을 참고해서, 사용자 질문에 대한 짧은 도입 문장 하나와
+   마무리 문장 하나만 작성하세요. 절대로 번호 매기기, 목록, 항목 나열을
+   하지 마세요. 실제 상품 목록은 당신의 답변 뒤에 별도로 그대로 붙기 때문에,
+   당신은 개별 상품에 대해 전혀 언급하지 마세요.
+2. [조회 결과 요약]이 비어있거나 오류인 경우, "확인할 수 없습니다"라는 취지로
+   답하고 필요하다면 사용자에게 추가 정보를 되물어보세요.
+3. 수익률, 가격 변동, 향후 전망 등 투자 예측이나 추천으로 해석될 수 있는
+   발언은 절대 하지 마세요.
+4. 어떤 조건(테이블/필터)으로 조회했는지 마무리 문장에 간단히 밝히세요.
+5. 도입 문장 + 마무리 문장 합쳐서 2~3문장 이내로 간결하게 작성하세요.
 """
 
 
@@ -31,34 +32,53 @@ class AnswerAgent(Agent):
     def __init__(self, mm):
         super().__init__(mm)
 
-    def _build_prompt(self, original_query: str, curated_results: dict) -> str:
-        lines = [f"[사용자 질문]\n{original_query}\n", "[조회 결과]"]
-
+    def _build_summary(self, curated_results: dict) -> str:
+        """LLM에게 넘길 요약 정보 (개수/테이블/조건만, 실제 값은 안 넘김)"""
         if not curated_results:
-            lines.append("(조회된 데이터 없음)")
-        else:
-            for table_name, r in curated_results.items():
-                if r.get("error"):
-                    lines.append(f"- {table_name}: 조회 오류 - {r['error']}")
-                    continue
-                count = r.get("row_count", 0)
-                cols = r.get("columns", [])
-                lines.append(f"- {table_name} (총 {count}건, 아래는 일부):")
-                for row in r.get("rows", []):
-                    preview = dict(zip(cols, row))
-                    lines.append(f"    {preview}")
-
-        lines.append("\n위 [조회 결과]만 근거로 삼아 [사용자 질문]에 답변하세요.")
+            return "(조회된 데이터 없음)"
+        lines = []
+        for table_name, r in curated_results.items():
+            if r.get("error"):
+                lines.append(f"- {table_name}: 조회 오류 - {r['error']}")
+            else:
+                lines.append(
+                    f"- {table_name}: 총 {r.get('row_count', 0)}건 중 "
+                    f"{r.get('curated_row_count', len(r.get('rows', [])))}건 표시 예정"
+                )
         return "\n".join(lines)
+
+    def _build_data_block(self, curated_results: dict) -> str:
+        """실제 데이터는 LLM을 거치지 않고 원본 그대로 텍스트로 렌더링"""
+        blocks = []
+        for table_name, r in curated_results.items():
+            if r.get("error") or not r.get("rows"):
+                continue
+            cols = r.get("columns", [])
+            lines = [f"[{table_name}]"]
+            for row in r["rows"]:
+                preview = dict(zip(cols, row))
+                lines.append(f"  · {preview}")
+            blocks.append("\n".join(lines))
+        return "\n\n".join(blocks)
 
     def query(self, original_query: str, curated_results: dict) -> dict:
         query_id = str(time.time() + random.random())
-        prompt = self._build_prompt(original_query, curated_results)
+
+        summary = self._build_summary(curated_results)
+        prompt = (
+            f"[사용자 질문]\n{original_query}\n\n"
+            f"[조회 결과 요약]\n{summary}\n\n"
+            "위 내용을 바탕으로 도입 문장과 마무리 문장만 작성하세요. "
+            "실제 상품 데이터는 언급하지 마세요."
+        )
 
         try:
-            answer_text = self.mm.generate_text(prompt, system_prompt=SYSTEM_PROMPT)
+            wrapper_text = self.mm.generate_text(prompt, system_prompt=SYSTEM_PROMPT)
         except Exception as e:
-            answer_text = f"확인할 수 없습니다. 답변 생성 중 오류가 발생했습니다: {e}"
+            wrapper_text = f"확인할 수 없습니다. 답변 생성 중 오류가 발생했습니다: {e}"
+
+        data_block = self._build_data_block(curated_results)
+        answer_text = f"{wrapper_text}\n\n{data_block}" if data_block else wrapper_text
 
         self.query_history[query_id] = {original_query: answer_text}
         return {"content": answer_text, "id": query_id}
