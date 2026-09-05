@@ -191,13 +191,19 @@ RETRY_HINT = (
 
 # 트리플 목적어에서 술어 로컬명 → OntologyValidator 통제 어휘 개념명 매핑.
 # fp:hasBondCategory는 라벨마다 컬럼(대/중/소분류)이 달라 resolve_category()로 별도 처리한다.
-# fp:isSellable은 통제 어휘 클래스가 아니라 xsd:boolean이라 resolve_filter_value 대상이 아니다
-# (판매가능 판정은 상품군마다 다른 컬럼/문자열이며 common.ttl 주석 참고 — 이 작업 범위 밖).
+# fp:isSellable도 통제 어휘 클래스가 아니라 xsd:boolean이라 resolve_filter_value 대상이
+# 아니다(판매가능 판정은 상품군마다 다른 컬럼/문자열 — ot_spec.md §2.6). 그래서 hasBondCategory와
+# 마찬가지로 _build_filters의 전용 분기에서 처리하고(qp_task16_parser_fixes.md §3), 이 dict에는
+# "등록된 술어"라는 기록용으로만 넣는다 — 실제로는 아래 전용 분기가 먼저 continue하므로 이
+# dict를 거쳐 resolve_filter_value로 흘러가지 않는다(hasBondCategory가 애초에 이 dict에 없는
+# 것과 대칭이지만, isSellable은 "미등록 술어 로그"(Step 2)에 잘못 걸리지 않는다는 걸 명시하기
+# 위해 넣어둔다).
 _PREDICATE_TO_CONCEPT = {
     "hasCreditRating": "CreditRating",
     "hasRiskGrade": "RiskGrade",
     "investsInAssetClass": "AssetClass",
     "investsInRegion": "Region",
+    "isSellable": "Sellable",
 }
 
 # 클래스 로컬명 → 카테고리 문자열 역매핑. OntologyValidator.CATEGORY_TO_CLASS의 역방향
@@ -216,7 +222,20 @@ _RANK_CONCEPTS = ("CreditRating", "RiskGrade")
 # "주어 술어 목적어" 형태의 단순 트리플 문자열 파서 (OntologyValidator._parse_triple과 동일한
 # 규칙을 독립적으로 구현 — validator의 파서는 private이라 여기서 재사용하지 않는다).
 _TRIPLE_RE = re.compile(r'^\s*(\S+)\s+(\S+)\s+(.+?)\s*\.?\s*$')
-_LITERAL_RE = re.compile(r'^"((?:[^"\\]|\\.)*)"(?:@[A-Za-z][A-Za-z0-9-]*|\^\^\S+)?$')
+
+# 큰따옴표뿐 아니라 작은따옴표 리터럴도 인정한다(qp_task16_parser_fixes.md §1, 버그 D) —
+# LLM이 `'중국'`처럼 작은따옴표를 쓰면 예전 정규식(큰따옴표 전용)이 매칭에 실패해 따옴표가
+# 그대로 값에 남았다("'중국'"). 두 대안(큰따옴표.../작은따옴표...) 중 하나만 매칭되도록
+# 하되, 여는/닫는 따옴표 종류가 일치해야 한다 — `"값'`처럼 섞이면 두 대안 모두 실패해서
+# (의도적으로) 리터럴로 인정하지 않고 원문 그대로 남긴다. 그룹 1=큰따옴표 안 값,
+# 그룹 2=작은따옴표 안 값 — 정확히 하나만 채워진다(_split_triple에서 둘 중 있는 쪽을 쓴다).
+# 언어태그(@ko)·데이터타입(^^xsd:string) 접미사, 이스케이프(\", \') 처리는 그대로 유지한다.
+# 따옴표가 전혀 없는 값(`AAAA`)은 애초에 이 정규식에 매칭되지 않아 기존처럼 원문 그대로
+# 쓰인다 — 이 동작은 바꾸지 않는다.
+_LITERAL_RE = re.compile(
+    r'^(?:"((?:[^"\\]|\\.)*)"|\'((?:[^\'\\]|\\.)*)\')'
+    r'(?:@[A-Za-z][A-Za-z0-9-]*|\^\^\S+)?$'
+)
 
 # numerical_verification 값에서 "AA- 이상"류 부등호 표현을 잡아낸다.
 # LLM에게 영어 부등호 기호(>=, <=, >, <)로 표현하도록 유도하는 편이 한국어 "이상/이하"
@@ -401,7 +420,8 @@ def _split_triple(triple):
         obj_raw = obj_raw[:-1].strip()
     lit_m = _LITERAL_RE.match(obj_raw)
     if lit_m:
-        obj = lit_m.group(1)
+        # 그룹 1(큰따옴표)과 그룹 2(작은따옴표) 중 실제로 매칭된 쪽만 값이 채워진다.
+        obj = lit_m.group(1) if lit_m.group(1) is not None else lit_m.group(2)
     elif ":" in obj_raw:
         obj = obj_raw.split(":", 1)[1]
     else:
@@ -585,8 +605,40 @@ class QueryParser(Agent):
                     )
                 continue
 
+            if pred_local == "isSellable":
+                # isSellable은 통제 어휘가 아니라 xsd:boolean이라 resolve_filter_value 대상이
+                # 아니다(Sellable을 타면 unknown_concept이 나온다) — hasBondCategory처럼
+                # 전용 분기로 처리한다(qp_task16_parser_fixes.md §3.2).
+                truthy = str(obj).strip().lower() in ("true", "y", "yes", "1", "예")
+                if not truthy:
+                    # "판매 불가"를 묻는 질의는 범위 밖이다 — 조건을 반영하지 않고
+                    # 흔적만 남긴다(§5 "하지 말 것": 판매 불가 질의 지원은 이 작업 범위 밖).
+                    think_trace.append("'판매 불가' 조건은 지원하지 않아 반영하지 않음")
+                    continue
+                # op을 "="이 아니라 "SELLABLE"이라는 전용 값으로 두는 이유 — 테이블마다
+                # 실제 SQL이 다르다(국내채권만 buyable_quantity > 0, 나머지는 <컬럼> = <값>이고
+                # 그 값조차 테이블마다 다르다 — 실측: tb_fund는 'Y'가 아니라 '판매중', §3.4).
+                # "="로 두면 build_filter_clauses가 이 구분을 할 방법이 없다. values의 "Y"는
+                # think_trace/디버깅용 표시일 뿐 실제 SQL 리터럴은 text_to_sql_agent.py가
+                # 테이블별로 따로 정한다.
+                for category, table in targets.items():
+                    filters.append({
+                        "column": None, "op": "SELLABLE", "values": ["Y"],
+                        "source": "ontology", "concept": "Sellable",
+                        "category": category, "table": table,
+                    })
+                    think_trace.append(f"판매가능 조건: {table}")
+                continue
+
             concept = _PREDICATE_TO_CONCEPT.get(pred_local)
             if concept is None:
+                # Step 2(qp_task16_parser_fixes.md §2, 버그 E) — 예전에는 여기서 조용히
+                # continue해서 "판매 가능한" 같은 조건이 흔적 없이 사라졌다(신용등급 필터만
+                # 남고 isSellable 조건이 증발). think_trace에 남겨야 사용자/평가자가 이
+                # 조건이 반영되지 않았음을 알 수 있다(대회 응답 스키마의 think_trace는
+                # "사고·추론·도구 사용 과정"이다).
+                logger.info(f"필터로 변환할 수 없는 술어라 건너뜀: {pred_local} (트리플: {triple})")
+                think_trace.append(f"'{pred_local}' 조건은 필터로 반영되지 않음")
                 continue
 
             for category, table in targets.items():

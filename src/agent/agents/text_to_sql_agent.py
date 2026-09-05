@@ -71,6 +71,20 @@ def _resolve_column(f: dict, table: str) -> str:
     return CONCEPT_COLUMN_MAP.get(table, {}).get(concept)
 
 
+# 판매가능(Sellable) 판정 — 테이블마다 컬럼뿐 아니라 "판매 가능"을 뜻하는 값 자체도
+# 다르다(qp_task16_parser_fixes.md §3.4, ot_spec.md §2.6). DB 실측 결과(§3.4 명령으로
+# 확인함):
+#   tb_domestic_etf.pd_sale_yn ∈ {'Y', 'N'}      → 'Y'
+#   tb_foreign_etf.pd_sale_yn  ∈ {'Y', None}     → 'Y'
+#   tb_fund.sale_yn            ∈ {'판매중','판매완료'} → 'Y'가 아니라 '판매중'
+# 값을 'Y'로 가정하지 말라는 지시(§5 "하지 말 것")에 따라 실측값을 그대로 쓴다.
+# tb_domestic_bond는 값 비교가 아니라 buyable_quantity > 0 판정이라 이 맵에 없다.
+_SELLABLE_TRUE_VALUE = {
+    "tb_fund": "판매중",
+}
+_DEFAULT_SELLABLE_TRUE_VALUE = "Y"
+
+
 def build_filter_clauses(filters: list, table: str) -> list:
     """resolved.filters 중 이 테이블에 해당하는 것만 골라 WHERE 조각으로 변환."""
     clauses = []
@@ -102,7 +116,17 @@ def build_filter_clauses(filters: list, table: str) -> list:
         vals = f.get("values") or []
         if not vals:
             continue
-        if f.get("op") == "LIKE":
+        if f.get("op") == "SELLABLE":
+            # 판매가능 조건(qp_task16_parser_fixes.md §3.2/§3.4, 버그 E) — 국내채권만
+            # 판매여부 컬럼이 없어 buyable_quantity > 0으로 판정하고, 나머지는
+            # <컬럼> = <실측 참값>이다(참값 자체가 테이블마다 다르다 — 위 _SELLABLE_TRUE_VALUE).
+            # values(["Y"])는 쓰지 않는다 — 실제 SQL 리터럴은 테이블별 실측값을 따로 쓴다.
+            if table == "tb_domestic_bond":
+                clauses.append(f"{col} > 0")
+            else:
+                true_value = _SELLABLE_TRUE_VALUE.get(table, _DEFAULT_SELLABLE_TRUE_VALUE)
+                clauses.append(f"{col} = {_sql_literal(true_value)}")
+        elif f.get("op") == "LIKE":
             # 상품명 텍스트 검색(qp_task14_productname.md §3.2) — 온톨로지가 보증하지 않는
             # 값이라 정확히 일치("=")도 목록 포함("IN")도 아닌 부분 일치로 찾는다.
             clauses.append(f"{col} LIKE {_sql_literal(f'%{vals[0]}%')}")
