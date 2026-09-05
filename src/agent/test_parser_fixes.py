@@ -66,26 +66,28 @@ def run_split_triple_checks() -> bool:
 def run_validator_single_quote_check(v) -> None:
     """§4.1 마지막 항목 — 작은따옴표 트리플이 validate_triples()를 통과하는지.
 
-    이 체크는 전체 통과 여부(exit code)에 반영하지 않는다 — OntologyValidator._parse_triple도
-    query_parser.py와 동일한 큰따옴표 전용 _LITERAL_RE를 쓰고 있어(실측 확인함) 이 트리플이
-    현재 valid=False로 잘못 컷된다. 검증기는 이 작업에서 수정하지 않기로 했으므로(§5 "하지
-    말 것") 이 결과는 "현재 상태 보고"용으로만 출력한다 — §6 완료 후 보고에 그대로 옮긴다.
+    Task 16 작성 당시엔 OntologyValidator._parse_triple도 query_parser.py와 동일한
+    큰따옴표 전용 _LITERAL_RE를 써서(실측 확인함) 이 트리플이 valid=False로 잘못
+    컷됐다 — 검증기는 그 작업 범위에서 수정하지 않기로 하고 "후속 작업"으로 보고만
+    남겼다. 이후 별도 요청으로 ontology_validator.py의 _parse_triple/_LITERAL_RE도
+    같은 규칙(큰따옴표/작은따옴표 모두 인정)으로 고쳐졌다 — 이제 valid=True가
+    기대값이다. 이 체크는 여전히 전체 통과 여부(exit code)에 반영하지 않는다 —
+    이 파일(Task 16)의 책임 범위가 아니라 검증기 쪽 변경 이력을 참고용으로 보여주는
+    것뿐이다.
     """
     print("=" * 60)
-    print("참고: OntologyValidator._parse_triple도 같은 작은따옴표 문제를 갖는지 확인")
-    print("(이 작업 범위에서 검증기는 수정하지 않는다 — 결과만 보고, exit code에 미반영)")
+    print("참고: OntologyValidator._parse_triple도 같은 작은따옴표 문제를 가졌었는지 확인")
+    print("(검증기는 이후 별도 요청으로 수정됨 — 결과만 보고, exit code에 미반영)")
     print("=" * 60)
     r = v.validate_triples(["fp:ForeignETF investsInRegion '중국'"])
     print(f"validate_triples([\"fp:ForeignETF investsInRegion '중국'\"]) = {r!r}")
     if r["valid"] is True:
-        print("[OK] 검증기 쪽은 이미 정상 동작 — 작은따옴표를 올바르게 벗겨낸다.")
+        print("[OK] 검증기 쪽도 작은따옴표를 올바르게 벗겨낸다(ontology_validator.py "
+              "_parse_triple 수정 이후).")
     else:
         print("[미해결] 검증기가 여전히 작은따옴표를 못 벗겨내 '중국'을 '''중국''' 형태로 "
               "취급하고 있다 — query_parser.py 쪽 파서를 고쳐도 validate_triples() 단계에서 "
-              "먼저 컷되므로 이 케이스(중-3 유사 질의)는 여전히 답변 불가로 샌다. "
-              "온톨로지 검증기(ontology_validator.py)의 _LITERAL_RE도 같은 방식으로 "
-              "고쳐야 완전히 해결되는데, 이번 작업 범위에서는 검증기를 건드리지 않기로 "
-              "했으므로 후속 작업으로 남긴다.")
+              "먼저 컷되므로 이 케이스(중-3 유사 질의)는 여전히 답변 불가로 샌다.")
     print()
 
 

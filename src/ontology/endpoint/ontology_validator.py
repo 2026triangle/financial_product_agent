@@ -54,9 +54,21 @@ _RANK_OPS = {
 # object는 "AAAA" 같은 큰따옴표 리터럴이거나 ex:True 같은 IRI/접두어 토큰일 수 있다.
 _TRIPLE_RE = re.compile(r'^\s*(\S+)\s+(\S+)\s+(.+?)\s*\.?\s*$')
 
-# 큰따옴표 리터럴 + 선택적 언어 태그(@ko)/데이터타입 접미사(^^xsd:string).
-# 이스케이프된 따옴표(\")는 리터럴 내용에 포함되게 둔다.
-_LITERAL_RE = re.compile(r'^"((?:[^"\\]|\\.)*)"(?:@[A-Za-z][A-Za-z0-9-]*|\^\^\S+)?$')
+# 큰따옴표뿐 아니라 작은따옴표 리터럴도 인정한다 — LLM이 `'중국'`처럼 작은따옴표를 쓰면
+# 예전 정규식(큰따옴표 전용)이 매칭에 실패해 따옴표가 그대로 값에 남았고("'중국'"),
+# 그 값이 통제 어휘(Region 등) 허용값과 매칭되지 않아 정상 값이 "존재하지 않는 값"으로
+# 잘못 컷됐다(query_parser.py의 _split_triple/_LITERAL_RE가 Task 16에서 이미 같은
+# 방식으로 고쳐졌다 — 이 파일도 같은 문제를 갖고 있어 동일한 규칙을 적용한다).
+# 두 대안(큰따옴표.../작은따옴표...) 중 하나만 매칭되도록 하되, 여는/닫는 따옴표
+# 종류가 일치해야 한다 — `"값'`처럼 섞이면 두 대안 모두 실패해서(의도적으로) 리터럴로
+# 인정하지 않고 원문 그대로 남는다. 그룹 1=큰따옴표 안 값, 그룹 2=작은따옴표 안
+# 값 — 정확히 하나만 채워진다(_parse_triple에서 둘 중 있는 쪽을 쓴다). 언어태그(@ko)·
+# 데이터타입(^^xsd:string) 접미사, 이스케이프(\", \') 처리는 그대로 유지한다. 따옴표가
+# 전혀 없는 값(`AAAA`)은 애초에 이 정규식에 매칭되지 않아 기존처럼 원문 그대로 쓰인다.
+_LITERAL_RE = re.compile(
+    r'^(?:"((?:[^"\\]|\\.)*)"|\'((?:[^\'\\]|\\.)*)\')'
+    r'(?:@[A-Za-z][A-Za-z0-9-]*|\^\^\S+)?$'
+)
 
 
 def _local(uri) -> str:
@@ -236,7 +248,9 @@ class OntologyValidator:
         lit_m = _LITERAL_RE.match(obj_raw)
         if lit_m:
             # "AAA"/"AAA"@ko/"AAA"^^xsd:string 전부 순수 값 "AAA"만 남긴다.
-            obj_value, obj_is_literal = lit_m.group(1), True
+            # 그룹 1(큰따옴표)과 그룹 2(작은따옴표) 중 실제로 매칭된 쪽만 값이 채워진다.
+            obj_value = lit_m.group(1) if lit_m.group(1) is not None else lit_m.group(2)
+            obj_is_literal = True
         else:
             obj_value, obj_is_literal = obj_raw, False
         return subj, pred, obj_value, obj_is_literal

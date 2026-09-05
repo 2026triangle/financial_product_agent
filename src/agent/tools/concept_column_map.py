@@ -37,3 +37,16 @@ CONCEPT_COLUMN_MAP = {
         "Sellable": "sale_yn",
     },
 }
+
+# 상품명(ProductName)은 정식명 컬럼 하나만으론 부족하다(qp_task17_name_matching.md §3) —
+# ETF는 사용자가 약칭으로 부르는 경우가 압도적이다(KODEX 200, TIGER 미국채10년선물 등).
+# CONCEPT_COLUMN_MAP은 값이 "문자열 하나"라는 계약을 다른 개념(CreditRating 등)이
+# 그대로 의존하므로 구조를 바꾸지 않고, ProductName 전용으로 (정식명, 약칭) 튜플을
+# 담는 별도 상수를 둔다 — text_to_sql_agent.py의 build_filter_clauses가 ProductName
+# LIKE 필터에서만 이 맵을 참조하고, 그 외 개념은 지금처럼 CONCEPT_COLUMN_MAP만 쓴다.
+PRODUCT_NAME_COLUMNS = {
+    "tb_domestic_bond": ("pd_nm", "pd_abrv_nm"),
+    "tb_domestic_etf": ("pd_nm", "pd_abrv_nm"),
+    "tb_foreign_etf": ("pd_nm", "pd_abrv_nm"),
+    "tb_fund": ("itm_nm", "itm_abrv_nm"),
+}

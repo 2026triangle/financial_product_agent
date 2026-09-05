@@ -271,6 +271,13 @@ def run_filter_level_checks() -> bool:
 
 # --------------------------------------------------------------------------
 # TextToSQLAgent.build_filter_clauses() — LIKE 처리 + 테이블별 이름 컬럼 라우팅
+#
+# 기대 절 형태가 "{col} LIKE ..." 단일 컬럼에서 "(정식명 LIKE ... OR 약칭 LIKE ...)"로
+# 바뀌었다 — Task 17(qp_task17_name_matching.md §3)에서 ETF 약칭 검색을 위해 의도적으로
+# 확장한 것이다(예: KODEX 200처럼 사용자가 약칭으로만 부르는 경우가 압도적이라 정식명
+# 컬럼 하나만 보면 대부분 실패했다). 회귀가 아니라 §3 적용 결과를 반영한 것이므로 여기
+# 기대값을 갱신한다 — 실제 컬럼 라우팅(테이블별로 다른 정식명/약칭 컬럼)이 맞는지는
+# 여전히 이 테스트가 검증한다.
 # --------------------------------------------------------------------------
 def run_build_filter_clauses_checks() -> bool:
     print("=" * 60)
@@ -282,10 +289,14 @@ def run_build_filter_clauses_checks() -> bool:
         "category": None, "table": None,
     }
     checks = [
-        ("tb_fund → itm_nm", "tb_fund", "itm_nm LIKE '%국민성장펀드%'"),
-        ("tb_domestic_bond → pd_nm", "tb_domestic_bond", "pd_nm LIKE '%국민성장펀드%'"),
-        ("tb_domestic_etf → pd_nm", "tb_domestic_etf", "pd_nm LIKE '%국민성장펀드%'"),
-        ("tb_foreign_etf → pd_nm", "tb_foreign_etf", "pd_nm LIKE '%국민성장펀드%'"),
+        ("tb_fund → itm_nm/itm_abrv_nm",
+         "tb_fund", "(itm_nm LIKE '%국민성장펀드%' OR itm_abrv_nm LIKE '%국민성장펀드%')"),
+        ("tb_domestic_bond → pd_nm/pd_abrv_nm",
+         "tb_domestic_bond", "(pd_nm LIKE '%국민성장펀드%' OR pd_abrv_nm LIKE '%국민성장펀드%')"),
+        ("tb_domestic_etf → pd_nm/pd_abrv_nm",
+         "tb_domestic_etf", "(pd_nm LIKE '%국민성장펀드%' OR pd_abrv_nm LIKE '%국민성장펀드%')"),
+        ("tb_foreign_etf → pd_nm/pd_abrv_nm",
+         "tb_foreign_etf", "(pd_nm LIKE '%국민성장펀드%' OR pd_abrv_nm LIKE '%국민성장펀드%')"),
     ]
     results = []
     for label, table, expected_clause in checks:
