@@ -58,17 +58,52 @@ fp:investsInRegion (투자지역) / fp:isSellable (판매가능여부)
 질문에 등급·분류·자산군·지역·판매가능 여부 등 "값"에 대한 가정이 하나라도 있으면
 반드시 logical_verification 트리플로 표현하세요. 값 가정이 전혀 없을 때만 빈 배열을 반환하세요.
 
+아래 속성은 정해진 값만 허용합니다. 목록에 없는 표현은 이 속성으로 쓰지 마세요.
+
+fp:investsInAssetClass (13종):
+  주식, 채권, 원자재, 혼합자산, 주식혼합, 채권혼합, 단기자금, 통화,
+  부동산, 대안투자, 재간접, 대출형, 기타
+fp:investsInRegion (13종):
+  국내, 미국, 글로벌, 미국제외 글로벌, 이머징/브릭스, 중국, 일본, 인도,
+  베트남, 아시아, 유럽, 남미/북미, 중동/아프리카
+fp:hasRiskGrade (7종):
+  1등급 매우높은위험 ~ 6등급 매우낮은위험, 미분류
+fp:hasCreditRating (19종, fp:Bond 전용):
+  AAA, AA+, AA0, AA-, A+, A0, A-, BBB+, BBB0, BBB-, BB+, BB0, BB-,
+  B+, B0, B-, CCC, CC0, C0
+fp:hasBondCategory (fp:Bond 전용, 대분류 6종):
+  회사채, 특수채, 국공채, 개인투자용국채, 외화채권-회사채, 외화채권-금융채
+
+업종·테마(반도체, 2차전지, 우주항공 등), 기업명, 기업 간 관계(자회사·계열사),
+구성종목 이름은 위 속성 어디에도 해당하지 않습니다.
+이런 표현은 logical_verification에 넣지 말고, 아래 필드에 그대로 담으세요.
+
+  "unsupported_conditions" : ["반도체 테마", "에코프로의 자회사"]
+
+상품명·종목명·펀드명·ETF명 등 특정 금융상품을 가리키는 고유명사가 질의에 나오면
+logical_verification 트리플로 만들지 마세요(예: fp:hasName 같은 속성을 지어내지
+마세요 — 그런 속성은 온톨로지에 없습니다). 대신 아래 필드에 그대로 담으세요.
+
+  "product_name" : ["국민성장펀드"]
+
+부분 이름이어도 그대로 담습니다("KODEX AI로봇" 등).
+
 * 수치 검증 - 사용자가 수치적으로 확인하려는 조건을 분리하세요.
-  등급·위험도처럼 "낮은", "높은", "안전한", "우량한" 같은 상대적 표현은
-  logical_verification(정확히 일치하는 값)이 아니라 numerical_verification에
-  부등호로 표현하세요. 값은 반드시 ">=" "<=" ">" "<" 중 하나로 시작하고,
-  그 뒤에 온톨로지가 아는 등급 이름을 그대로 씁니다.
 
-  위험이 낮은/안전한 쪽  -> {"risk_grade": "<=5등급 낮은위험"}
-  위험이 높은 쪽        -> {"risk_grade": ">=2등급 높은위험"}
-  신용등급이 우량한 쪽    -> {"credit_rating": ">=AA-"}
+  아래 두 경우는 모두 logical_verification이 아니라 numerical_verification에
+  부등호로 표현합니다.
+   (1) 상대적 표현 — "낮은", "높은", "안전한", "우량한", "좋은"
+   (2) 명시적 비교 — "AA- 이상", "3등급 이하", "BBB보다 높은", "5등급 미만"
 
-  특정 등급 하나를 딱 집어 말한 경우("5등급인", "AAA인")에만
+  값은 반드시 ">=" "<=" ">" "<" 중 하나로 시작하고, 그 뒤에 등급 이름을 그대로 씁니다.
+  한국어 "이상/이하"를 값 안에 남기지 마세요.
+
+  "AA- 이상"        -> {"credit_rating": ">=AA-"}
+  "BBB0 이하"       -> {"credit_rating": "<=BBB0"}
+  "위험 낮은/안전한"  -> {"risk_grade": "<=5등급 낮은위험"}
+  "위험 높은"        -> {"risk_grade": ">=2등급 높은위험"}
+
+  비교어가 전혀 없이 등급 하나만 말한 경우("신용등급 AAA인", "5등급인")에만
   logical_verification 트리플로 표현하세요.
 
 배경 지식 :
@@ -110,6 +145,29 @@ example :
     "category" : ["domestic_etf"],
     "logical_verification" : ["fp:DomesticETF fp:investsInAssetClass \\"주식형\\""],
     "numerical_verification" : {"risk_grade" : "<=5등급 낮은위험"}
+}
+
+[query]
+{
+    "query" : "현재 판매 가능한 원화채권 중 AA- 이상 종목 알려줘"
+}
+[answer]
+{
+    "category" : ["domestic_bond"],
+    "logical_verification" : ["fp:Bond fp:isSellable \\"true\\""],
+    "numerical_verification" : {"credit_rating" : ">=AA-"}
+}
+
+[query]
+{
+    "query" : "국민성장펀드의 구조와 투자전략 동향 등 찾아서 알려줘"
+}
+[answer]
+{
+    "category" : ["fund"],
+    "logical_verification" : [],
+    "numerical_verification" : {},
+    "product_name" : ["국민성장펀드"]
 }
 
 {{retry_hint}}
@@ -164,6 +222,65 @@ _LITERAL_RE = re.compile(r'^"((?:[^"\\]|\\.)*)"(?:@[A-Za-z][A-Za-z0-9-]*|\^\^\S+
 # LLM에게 영어 부등호 기호(>=, <=, >, <)로 표현하도록 유도하는 편이 한국어 "이상/이하"
 # 파싱보다 결정론적이라 이 형태를 우선 지원한다.
 _RANK_INEQUALITY_RE = re.compile(r'^\s*(>=|<=|>|<|=)\s*(.+?)\s*$')
+
+# PROMPT로 유도해도 LLM은 확률적이라 {"credit_rating": "AA- 이상"}처럼 한국어 비교
+# 표현을 그대로 내보낼 수 있다(qp_task13_comparison.md §1.2 — 버그 A). 기호 패턴이
+# 실패했을 때만 이 패턴으로 재시도한다. "이상의"/"이하의"를 "이상"/"이하"보다 먼저
+# 나열해야 한다 — 알파벳(이 경우 한글) 순서가 아니라 더 긴 접미어가 먼저 매치되도록
+# 순서를 맞춘 것이다("이상의"가 뒤에 있으면 "이상"이 먼저 매치되고 "의"가 라벨에
+# 남아 끝(\s*$)에 걸려 전체 매치가 실패한다).
+_RANK_KOREAN_RE = re.compile(r'^\s*(.+?)\s*(이상의|이상|초과|넘는|이하의|이하|미만)\s*$')
+
+# 한국어 비교 표현 → 부등호 연산자. "초과"/"넘는"은 등급 자체를 포함하지 않는 진짜
+# 초과라 ">"(포함하지 않음), 나머지("이상"류)는 ">="/"<="(포함함)로 매핑한다.
+_RANK_KOREAN_OP = {
+    "이상": ">=", "이상의": ">=",
+    "초과": ">", "넘는": ">",
+    "이하": "<=", "이하의": "<=",
+    "미만": "<",
+}
+
+
+# 검증기(src/ontology/endpoint/ontology_validator.py, validate_triples())가 내는 위반
+# reason 문구 중 "커버리지 밖"(온톨로지가 이 속성/클래스를 아예 모름 — LLM이 지어낸
+# fp:hasName 같은 경우)에 해당하는 두 문구의 부분 문자열이다(qp_task14_productname.md §2).
+# 근거 위치 — ontology_validator.py validate_triples():
+#   "'{pred_raw}'는 온톨로지에 정의되지 않은 속성입니다." (술어 존재 검사)
+#   "'{subj_raw}'는 온톨로지에 존재하지 않는 클래스입니다." (주어 클래스 존재 검사)
+# 이 두 가지가 아닌 위반(허용값 위반, domain 위반, 트리플 형식 오류)은 전부 "진짜 모순"으로
+# 취급해 기존처럼 즉시 컷한다 — 답변 불가 5문항 방어를 지키기 위한 보수적 기본값이다.
+# 검증기 자체는 수정하지 않는다 — reason 문구가 바뀌면 이 상수 두 개만 고치면 된다.
+_COVERAGE_VIOLATION_MARKERS = (
+    "온톨로지에 정의되지 않은 속성입니다",
+    "온톨로지에 존재하지 않는 클래스입니다",
+)
+
+
+def _is_coverage_violation(violation: dict) -> bool:
+    """validate_triples()가 낸 위반 하나가 '온톨로지 커버리지 밖'(모르는 속성/클래스)인지
+    판별한다. LLM 없이 직접 단위 테스트할 수 있도록 순수 함수로 둔다."""
+    reason = violation.get("reason") or ""
+    return any(marker in reason for marker in _COVERAGE_VIOLATION_MARKERS)
+
+
+def _parse_rank_comparison(val):
+    """numerical_verification 값 문자열에서 (연산자, 라벨)을 뽑아낸다.
+
+    기호 표현(">=AA-")을 먼저 시도하고, 실패했을 때만 한국어 표현("AA- 이상")을
+    시도한다(qp_task13_comparison.md §3) — 기호 쪽이 더 결정론적이라 우선순위를 둔다.
+    둘 다 매칭되지 않으면 None을 반환한다. 로그는 호출부(query())에서 남긴다 —
+    이 함수는 순수 파싱만 하고 로거를 갖지 않아 LLM 없이 직접 단위 테스트할 수 있다.
+    """
+    m = _RANK_INEQUALITY_RE.match(val)
+    if m:
+        return m.group(1), m.group(2).strip()
+    m = _RANK_KOREAN_RE.match(val)
+    if m:
+        label = m.group(1).strip()
+        op = _RANK_KOREAN_OP.get(m.group(2))
+        if op and label:
+            return op, label
+    return None
 
 
 def _extract_json(text):
@@ -582,31 +699,65 @@ class QueryParser(Agent):
         triples = _ensure_str_list(parsed.get("logical_verification"))
         numerical = parsed.get("numerical_verification")
         numerical = numerical if isinstance(numerical, dict) else {}
+        # unsupported_conditions는 선택 필드다(qp_task13_comparison.md §4.1) — 키가 없어도
+        # _ensure_str_list(None) == [] 라 기존 동작이 그대로 유지된다.
+        unsupported = _ensure_str_list(parsed.get("unsupported_conditions"))
+        # product_name도 선택 필드다(qp_task14_productname.md §3) — 상품명·종목명 등
+        # 고유명사는 온톨로지 통제 어휘가 아니라 개방형 텍스트라 트리플로 만들지 않고
+        # 여기서 별도 필드로 받아 LIKE 필터로 승격한다(아래 5.1).
+        names = _ensure_str_list(parsed.get("product_name"))
 
         think_trace.append(f"LLM 카테고리 추출: {categories}")
         think_trace.append(
             f"LLM 논리 검증 트리플: {triples}" if triples
             else "논리 검증 트리플 없음 (값 가정이 없는 질의로 LLM이 판단함)"
         )
+        if unsupported:
+            # 이 필드만으로 컷하지 않는다 — 다른 조건이 유효하면 아래에서 그대로 부분
+            # 답변을 진행한다. 유효 조건이 하나도 없어 아래 5.5) 가드가 컷하는 경우에만
+            # 이 목록을 suggestion에 반영해 정확한 사유를 제시한다.
+            think_trace.append(f"제공 데이터에 없는 조건: {unsupported}")
+        if names:
+            think_trace.append(f"LLM 상품명 추출: {names}")
 
         # 2) logical_verification 트리플을 validate_triples()에 통과
         if triples:
             verification = self.validator.validate_triples(triples)
-            # 3) 위반이면 즉시 컷 — LLM 추가 호출 없이 반환
             if not verification.get("valid", True):
-                violation = verification["violations"][0]
-                reason = violation.get("reason", "질문에 논리적 모순이 있습니다.")
-                suggestion = violation.get("suggestion") or "질문을 다시 확인해 주세요."
-                think_trace.append(f"온톨로지 검증: 위반 — {reason}")
-                return {
-                    "content": f"{reason} {suggestion}",
-                    "id": call_id,
-                    "answerable": False,
-                    "reason": reason,
-                    "suggestion": suggestion,
-                    "think_trace": think_trace,
-                }
-            think_trace.append("온톨로지 검증: 통과 (트리플이 온톨로지와 모순되지 않음)")
+                violations = verification["violations"]
+                # Step 1(qp_task14_productname.md §2) — "커버리지 밖"(온톨로지가 모르는
+                # 속성/클래스 — 예: LLM이 지어낸 fp:hasName)과 "진짜 모순"(허용값 위반,
+                # domain 위반 등)을 구분한다. **모순 위반 판정을 반드시 먼저 한다** — 커버리지
+                # 위반부터 걸러내고 나면(트리플을 지우고 다시 검증하는 식) 혼합 케이스에서
+                # 컷 사유가 뒤바뀐다. 예를 들어 [hasName, hasCreditRating "AAAA"] 두 트리플이
+                # 섞이면 반드시 AAAA(모순) 사유로 컷해야지 hasName(커버리지) 사유로 컷하면
+                # 안 된다 — 여기서는 validate_triples를 한 번만 호출한 뒤 그 violations
+                # 전체에서 모순만 먼저 골라내는 방식으로 이 순서를 지킨다.
+                contradiction_violations = [v for v in violations if not _is_coverage_violation(v)]
+                # 3) 모순 위반이 하나라도 있으면 지금처럼 즉시 컷 (답변 불가 5문항 방어 유지)
+                if contradiction_violations:
+                    violation = contradiction_violations[0]
+                    reason = violation.get("reason", "질문에 논리적 모순이 있습니다.")
+                    suggestion = violation.get("suggestion") or "질문을 다시 확인해 주세요."
+                    think_trace.append(f"온톨로지 검증: 위반 — {reason}")
+                    return {
+                        "content": f"{reason} {suggestion}",
+                        "id": call_id,
+                        "answerable": False,
+                        "reason": reason,
+                        "suggestion": suggestion,
+                        "think_trace": think_trace,
+                    }
+                # 4) 커버리지 위반만 있으면 컷하지 않는다 — 해당 트리플만 제외하고 나머지로
+                # 계속 진행한다(§2.1 Step 4). 위에서 모순 위반이 있었다면 이미 반환했으므로
+                # 이 시점의 violations는 전부 커버리지 위반뿐이다.
+                coverage_triples = {v["triple"] for v in violations}
+                for v in violations:
+                    think_trace.append(f"온톨로지가 모르는 속성이라 검증에서 제외: {v['triple']}")
+                triples = [t for t in triples if t not in coverage_triples]
+                think_trace.append("온톨로지 검증: 나머지 트리플은 온톨로지와 모순되지 않음")
+            else:
+                think_trace.append("온톨로지 검증: 통과 (트리플이 온톨로지와 모순되지 않음)")
 
         # 4) 통과 시 카테고리 -> 소스 테이블 라우팅
         tables = {}
@@ -621,12 +772,41 @@ class QueryParser(Agent):
         # 5) 트리플별 값 정규화 / 채권분류 컬럼 라우팅 (qp_task10_multicategory.md §2, §3)
         filters, excluded_categories = self._build_filters(triples, tables, think_trace)
 
+        # 5.1) 상품명 필터 승격 (qp_task14_productname.md §3.2) — 상품명·종목명은 통제
+        # 어휘가 아니라 개방형 텍스트라 온톨로지가 보증할 수 없다. source를 "ontology"가
+        # 아니라 "user_text"로 표시해 하류(TextToSQLAgent)가 이 필터의 근거를 구분할 수
+        # 있게 한다. column/table/category를 비워두는 이유는 아래 §3.3 처리와도 관련된다 —
+        # 이 필터는 특정 상품군에 묶이지 않고 조회 대상 테이블 전부에 적용돼야 한다.
+        for name in names:
+            filters.append({
+                "column": None, "op": "LIKE", "values": [name],
+                "source": "user_text", "concept": "ProductName",
+                "category": None, "table": None,
+            })
+            think_trace.append(f"상품명 텍스트 검색: '{name}' (LIKE)")
+
         # excluded_categories를 tables에서 실제로 제거한다 — 그렇지 않으면 table_results/
         # search_finance_metadata 호출만 건너뛸 뿐 resolved['tables']엔 그대로 남아서,
         # 이 결과를 읽는 다음 단계(Text-to-SQL)가 제외됐어야 할 테이블을 계속 조회 대상으로
         # 본다(교차검증에서 지적됨). 이 시점 이후로는 tables가 "실제로 조회할 카테고리"다.
         if excluded_categories:
             tables = {k: v for k, v in tables.items() if k not in excluded_categories}
+
+        # 5.2) §3.3 정책 — 상품명 필터가 있으면 컷하지 않는다. "국민성장펀드 알려줘"처럼
+        # 상품군을 명시하지 않은 질의는 LLM이 category를 못 뽑거나(구멍 A), 다른 조건 때문에
+        # tables가 전부 제외될 수 있다(구멍 B). 두 정책(4개 테이블 전체를 기본값으로 채우기 /
+        # "어느 상품군인지" 역질문) 중 전자를 택했다 — 역질문 왕복 없이 즉시 이름 검색을
+        # 시도하는 편이 사용자 경험이 낫고, 존재하지 않는 상품명이면 검색 결과가 0건으로
+        # 나와 자연스럽게 걸러진다(§6 완료 후 보고에서 이 선택과 이유를 다시 밝힌다).
+        if names and not tables:
+            for category in _CLASS_TO_CATEGORY.values():
+                table_name = self.validator.resolve_source_table(category)
+                if table_name:
+                    tables[category] = table_name
+            think_trace.append(
+                "상품명 조건이 있어 상품군을 특정하지 못해도 컷하지 않고 "
+                "4개 테이블 전체를 대상으로 이름 검색"
+            )
 
         # 5.5) 답할 대상이 하나도 안 남으면 컷한다 (qp_task12_unanswerable.md §1 Step 2).
         # "구멍 A" — LLM이 category 자체를 못 뽑음(예: "외계채권ㅋㅋ") — triples가 비어
@@ -653,6 +833,15 @@ class QueryParser(Agent):
                 else:
                     suggestion = ("해당 상품군에 없는 조건이 포함됐을 수도 있습니다. "
                                   "다른 상품군으로 다시 질문해 주시겠어요?")
+            if unsupported:
+                # 버그 C(qp_task13_comparison.md §0) — 테마·기업명·기업관계·구성종목처럼
+                # 온톨로지 어떤 속성에도 안 걸리는 조건이 유효 조건 전무의 실제 원인일 때,
+                # "AssetClass 값이 아님" 류의 엉뚱한 사유 대신 정확한 사유를 댄다.
+                reason = "질문에 포함된 조건 중 일부가 제공된 데이터에 없습니다."
+                suggestion = (
+                    "'" + "', '".join(unsupported) + "' 정보는 "
+                    "제공된 데이터에 포함되어 있지 않아 확인이 어렵습니다."
+                )
             think_trace.append("조회 가능한 카테고리가 없어 답변 불가로 판정")
             return {
                 "content": f"{reason} {suggestion}",
@@ -665,15 +854,20 @@ class QueryParser(Agent):
 
         # 6) 부등호 질의 전개 (qp_spec.md §4.3) — best-effort.
         # numerical_verification 키는 LLM이 자유롭게 붙이므로 개념명을 알 수 없다.
-        # 값이 ">=AA-" 처럼 부등호로 시작하면 서열이 있는 개념(CreditRating/RiskGrade) 순으로
-        # expand_rank_filter를 시도해서, 매칭되는 첫 개념의 결과만 채택한다.
+        # 값이 ">=AA-"(기호) 또는 "AA- 이상"(한국어) 형태면 서열이 있는 개념
+        # (CreditRating/RiskGrade) 순으로 expand_rank_filter를 시도해서, 매칭되는
+        # 첫 개념의 결과만 채택한다. 어느 쪽 표현으로도 해석하지 못하면 예전에는
+        # 조용히 버려졌다(qp_task13_comparison.md §1.2) — 이제 로그로 남긴다.
         for key, val in numerical.items():
             if not isinstance(val, str):
                 continue
-            m = _RANK_INEQUALITY_RE.match(val)
-            if not m:
+            comparison = _parse_rank_comparison(val)
+            if comparison is None:
+                logger.info(
+                    f"numerical_verification.{key}='{val}' — 부등호 표현으로 해석하지 못해 전개를 건너뜀"
+                )
                 continue
-            op, label = m.group(1), m.group(2).strip()
+            op, label = comparison
             for concept in _RANK_CONCEPTS:
                 try:
                     expanded = self.validator.expand_rank_filter(concept, label, op)
