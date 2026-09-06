@@ -8,8 +8,7 @@ from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
 
 
-from main import Agent, _filters_for_table, _build_condition_summary, _extract_skipped_conditions
-
+from main import Agent, _build_condition_summary, _extract_skipped_conditions
 logger = logging.getLogger("agent.api_server")
 app = FastAPI()
 
@@ -46,11 +45,11 @@ def _build_think_trace_summary(parse_result: dict, sql_results: dict) -> str:
             steps.append(f"[{table_name}] SQL 실행: {r['sql']} → {r.get('row_count', 0)}건")
         elif r.get("error"):
             steps.append(f"[{table_name}] SQL 실행 실패: {r['error']}")
-
-    skipped = _extract_skipped_conditions(parse_result.get("think_trace") or [])
+    # 수정
+    skipped = _extract_skipped_conditions(parse_result)
     if skipped:
         steps.append(f"[검증 요약] 다음 조건은 데이터 미비로 검증하지 못함: {', '.join(skipped)}")
-
+        
     return " → ".join(steps) if steps else "추가 추론 없음"
 
 @app.get("/answer")
@@ -99,6 +98,14 @@ def answer(question_id: str = Query(...), question: str = Query(...)):
 
         condition_summary = _build_condition_summary(tables, all_filters)
         final_text += f"\n\n[조회 조건] {condition_summary}"
+
+        skipped = _extract_skipped_conditions(parse_result)
+        if skipped:
+            final_text += (
+                "\n\n[참고] 다음 조건은 보유한 데이터로 검증하지 못했습니다: "
+                + ", ".join(skipped)
+                + ". 위 결과는 이 조건이 반영되지 않았을 수 있으니 참고용으로만 확인해 주세요."
+            )
 
         return JSONResponse({
             "question_id": question_id,

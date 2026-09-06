@@ -45,15 +45,14 @@ def _build_condition_summary(tables: dict, all_filters: list) -> str:
 
 
 SHOW_THOUTH_PROCESS = True
-_SKIPPED_PROPERTY_RE = re.compile(r"온톨로지가 모르는 속성이라 검증에서 제외:\s*(.+)")
-
-def _extract_skipped_conditions(think_trace: list) -> list:
-    skipped = []
-    for step in think_trace or []:
-        m = _SKIPPED_PROPERTY_RE.search(step)
-        if m:
-            skipped.append(m.group(1).strip())
-    return skipped
+def _extract_skipped_conditions(parse_result: dict) -> list:
+    """QueryParser가 구조화해서 내려주는 unsupported_conditions 필드를 그대로 읽는다."""
+    conditions = (
+        parse_result.get("unsupported_conditions")
+        or (parse_result.get("parsed") or {}).get("unsupported_conditions")
+        or []
+    )
+    return list(conditions)
 
 def user_say(this):
     return {'user': this}
@@ -220,7 +219,7 @@ class Agent:
         condition_summary = _build_condition_summary(tables, all_filters)
         content += f"\n\n[조회 조건] {condition_summary}"
 
-        skipped = _extract_skipped_conditions(parse_result.get("think_trace") or [])
+        skipped = _extract_skipped_conditions(parse_result)
         if skipped:
             content += (
                 "\n\n[참고] 다음 조건은 보유한 데이터로 검증하지 못했습니다: "
