@@ -19,7 +19,15 @@ from tools.meta_search_tool import register_meta_search_tool
 
 
 SHOW_THOUTH_PROCESS = True
+_SKIPPED_PROPERTY_RE = re.compile(r"온톨로지가 모르는 속성이라 검증에서 제외:\s*(.+)")
 
+def _extract_skipped_conditions(think_trace: list) -> list:
+    skipped = []
+    for step in think_trace or []:
+        m = _SKIPPED_PROPERTY_RE.search(step)
+        if m:
+            skipped.append(m.group(1).strip())
+    return skipped
 
 def user_say(this):
     return {'user': this}
@@ -181,7 +189,15 @@ class Agent:
 
         curated = self._curate_sql_results(sql_results)
         answer_result = self.agents["Answer"].query(query, curated)
-        return answer_result["content"]
+        content = answer_result["content"]
+        skipped = _extract_skipped_conditions(parse_result.get("think_trace") or [])
+        if skipped:
+            content += (
+                "\n\n[참고] 다음 조건은 보유한 데이터로 검증하지 못했습니다: "
+                + ", ".join(skipped)
+                + ". 위 결과는 이 조건이 반영되지 않았을 수 있으니 참고용으로만 확인해 주세요."
+            )
+        return content
 
 if __name__ == "__main__":
     # Step 3(qp_task15_ratelimit.md §4) — CLI 경로 예외 방어. 429 백오프가 다 소진되면
