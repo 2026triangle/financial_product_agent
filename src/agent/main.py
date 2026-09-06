@@ -229,7 +229,7 @@ class Agent:
             return {
                 "content": None,
                 "kind": "sql_failed",
-                "early_return": f"죄송합니다, 조회 중 오류가 발생했습니다: {sql_results[failed_tables[0]]['error']}",
+                "early_return": "확인할 수 없습니다. 질의 조건에 해당하는 상품을 정확히 특정할 수 없습니다.",
                 "parse_result": parse_result,
                 "sql_results": sql_results,
                 "tables": tables,
