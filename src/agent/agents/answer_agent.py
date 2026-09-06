@@ -9,16 +9,20 @@ LLM은 안내 문구/도입-마무리 문장만 생성
 
 import time
 import random
+import re
 
 from agents.agent import Agent
+
 
 SYSTEM_PROMPT = """당신은 금융 상품 정보를 안내하는 답변 합성 에이전트입니다.
 아래 규칙을 반드시 지키세요.
 
 1. 아래 [조회 결과 요약]을 참고해서, 사용자 질문에 대한 짧은 도입 문장 하나만
-   작성하세요. 절대로 번호 매기기, 목록, 항목 나열을 하지 마세요. 실제 상품
-   목록과 조회 조건은 당신의 답변 뒤에 별도로 자동 첨부되므로, 당신은 개별
-   상품이나 구체적인 조회 조건(테이블명, 필터값 등)을 언급하지 마세요.
+    작성하세요. 절대로 번호 매기기, 목록, 표(마크다운 테이블, "|" 문자 사용)를
+    만들지 마세요. 실제 상품 목록과 조회 조건은 당신의 답변 뒤에 별도로 자동
+    첨부되므로, 당신은 개별 상품이나 구체적인 조회 조건(테이블명, 필터값 등)을
+    언급하지 마세요. 특히 "상품A", "회사A"처럼 예시 형태로라도 가상의 상품/
+    회사 이름을 지어내는 것은 절대 금지입니다.
 2. [조회 결과 요약]이 비어있거나 오류인 경우, "확인할 수 없습니다"라는 취지로
    답하고 필요하다면 사용자에게 추가 정보를 되물어보세요.
 3. 수익률, 가격 변동, 향후 전망 등 투자 예측이나 추천으로 해석될 수 있는
@@ -34,6 +38,19 @@ SYSTEM_PROMPT = """당신은 금융 상품 정보를 안내하는 답변 합성 
    서술하고, 그 조건이 만족되었다고 주장하지 마세요.
 7. 도입 문장은 1~2문장 이내로 간결하게 작성하세요.
 """
+
+_MARKDOWN_TABLE_LINE_RE = re.compile(r'^\s*\|.*\|\s*$')
+
+
+def _strip_markdown_tables(text: str) -> str:
+    """AnswerAgent가 규칙(개별 상품 언급 금지)을 어기고 표를 만들어 가짜 상품을
+    지어내는 경우에 대비한 코드 레벨 안전장치. 프롬프트 지침만으로는 막히지 않는
+    사례가 실측 확인됨(하-1: '채권A'/'회사A' 지어냄) — 마크다운 표 형태의 줄은
+    도입 문장에서 통째로 제거한다. 실제 데이터는 _build_data_block이 별도로
+    붙이므로 표를 지워도 정보 손실이 없다."""
+    lines = text.split("\n")
+    cleaned = [line for line in lines if not _MARKDOWN_TABLE_LINE_RE.match(line)]
+    return "\n".join(cleaned).strip()
 
 class AnswerAgent(Agent):
     def __init__(self, mm):
@@ -84,6 +101,7 @@ class AnswerAgent(Agent):
         except Exception as e:
             wrapper_text = f"확인할 수 없습니다. 답변 생성 중 오류가 발생했습니다: {e}"
 
+        wrapper_text = _strip_markdown_tables(wrapper_text) 
         data_block = self._build_data_block(curated_results)
         answer_text = f"{wrapper_text}\n\n{data_block}" if data_block else wrapper_text
 

@@ -320,6 +320,37 @@ def _is_coverage_violation(violation: dict) -> bool:
     return any(marker in reason for marker in _COVERAGE_VIOLATION_MARKERS)
 
 
+_PREDICATE_TO_NUMERICAL_KEY = {
+    "hasCreditRating": "credit_rating",
+    "hasRiskGrade": "risk_grade",
+}
+_RANK_TRIPLE_RE = re.compile(r'fp:\w+\s+fp:(hasCreditRating|hasRiskGrade)\s+"?([^"]+?)"?$')
+_COMPARISON_WORD_RE = re.compile(r'(이상|이하|초과|미만)')
+_COMPARISON_WORD_TO_OP = {"이상": ">=", "이하": "<=", "초과": ">", "미만": "<"}
+
+def _rescue_misplaced_rank_comparisons(query_text, triples, numerical, think_trace):
+    """LLM이 'AA- 이상' 같은 비교 표현을 logical_verification 정확매칭 트리플로
+    잘못 출력하는 사례를 보정한다. 프롬프트에 동일 케이스의 example이 이미 있음에도
+    LLM이 확률적으로 무시하는 게 실측 확인됨 — numerical_verification으로 옮겨서
+    기존 부등호 전개 로직(6단계)을 그대로 재사용한다."""
+    kept_triples = []
+    numerical = dict(numerical)
+    comparison = _COMPARISON_WORD_RE.search(query_text)
+    for triple in triples:
+        match = _RANK_TRIPLE_RE.search(triple)
+        key = _PREDICATE_TO_NUMERICAL_KEY.get(match.group(1)) if match else None
+        if not match or not comparison or not key or key in numerical:
+            kept_triples.append(triple)
+            continue
+        value = match.group(2)
+        op = _COMPARISON_WORD_TO_OP[comparison.group(1)]
+        numerical[key] = f"{op}{value}"
+        think_trace.append(
+            f"LLM이 '{value} {comparison.group(1)}'를 logical_verification 정확매칭으로 "
+            f"잘못 출력 → numerical_verification.{key}='{op}{value}'로 보정"
+        )
+    return kept_triples, numerical
+
 def _parse_rank_comparison(val):
     """numerical_verification 값 문자열에서 (연산자, 라벨)을 뽑아낸다.
 
@@ -796,6 +827,7 @@ class QueryParser(Agent):
         # 고유명사는 온톨로지 통제 어휘가 아니라 개방형 텍스트라 트리플로 만들지 않고
         # 여기서 별도 필드로 받아 LIKE 필터로 승격한다(아래 5.1).
         names = _ensure_str_list(parsed.get("product_name"))
+        triples, numerical = _rescue_misplaced_rank_comparisons(query, triples, numerical, think_trace)
 
         think_trace.append(f"LLM 카테고리 추출: {categories}")
         think_trace.append(

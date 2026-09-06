@@ -55,69 +55,36 @@ def _build_think_trace_summary(parse_result: dict, sql_results: dict) -> str:
 @app.get("/answer")
 def answer(question_id: str = Query(...), question: str = Query(...)):
     try:
-        parse_result = _agent.agents["QueryParser"].query(question)
+        result = _agent._run_pipeline(question)
+        parse_result = result["parse_result"]
+        sql_results = result["sql_results"]
 
-        if not parse_result.get("answerable", False):
+        if result["content"] is None:
+            if result["kind"] == "unanswerable":
+                answer_text = f"확인할 수 없습니다. {result['early_return']}"
+            elif result["kind"] == "no_tables":
+                answer_text = "확인할 수 없습니다. 조회할 상품 카테고리를 특정하지 못했습니다."
+            else:  # sql_failed
+                answer_text = f"확인할 수 없습니다. {result['early_return']}"
+
             return JSONResponse({
                 "question_id": question_id,
                 "question": question,
-                "retrieved_context": "",
-                "think_trace": _build_think_trace_summary(parse_result, {}),
-                "answer": f"확인할 수 없습니다. {parse_result.get('content', '')}",
+                "retrieved_context": _build_context_summary(sql_results),
+                "think_trace": _build_think_trace_summary(parse_result, sql_results),
+                "answer": answer_text,
             })
-
-        resolved = parse_result.get("resolved", {}) or {}
-        table_results = parse_result.get("table_results", {}) or {}
-        tables = resolved.get("tables", {}) or {}
-        all_filters = resolved.get("filters", []) or []
-
-        if not tables:
-            return JSONResponse({
-                "question_id": question_id,
-                "question": question,
-                "retrieved_context": "",
-                "think_trace": _build_think_trace_summary(parse_result, {}),
-                "answer": "확인할 수 없습니다. 조회할 상품 카테고리를 특정하지 못했습니다.",
-            })
-
-        sql_results = {}
-        for category, table_name in tables.items():
-            table_filters = _filters_for_table(all_filters, table_name)
-            cat_table_results = table_results.get(category, {})
-            result = _agent.agents["TextToSQL"].query(
-                original_query=question,
-                table=table_name,
-                filters=table_filters,
-                table_results=cat_table_results,
-            )
-            sql_results[table_name] = result
-
-        curated = _agent._curate_sql_results(sql_results)
-        answer_result = _agent.agents["Answer"].query(question, curated)
-        final_text = answer_result["content"]
-
-        condition_summary = _build_condition_summary(tables, all_filters)
-        final_text += f"\n\n[조회 조건] {condition_summary}"
-
-        skipped = _extract_skipped_conditions(parse_result)
-        if skipped:
-            final_text += (
-                "\n\n[참고] 다음 조건은 보유한 데이터로 검증하지 못했습니다: "
-                + ", ".join(skipped)
-                + ". 위 결과는 이 조건이 반영되지 않았을 수 있으니 참고용으로만 확인해 주세요."
-            )
 
         return JSONResponse({
             "question_id": question_id,
             "question": question,
             "retrieved_context": _build_context_summary(sql_results),
             "think_trace": _build_think_trace_summary(parse_result, sql_results),
-            "answer": final_text,
+            "answer": result["content"],
         })
 
     except Exception as e:
         logger.exception("answer 처리 중 예외 발생")
-        # 스펙상 500 금지 — 무조건 200 + 동일 스키마로 반환
         return JSONResponse({
             "question_id": question_id,
             "question": question,

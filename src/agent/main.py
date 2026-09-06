@@ -172,16 +172,24 @@ class Agent:
             }
         return curated
 
-    def query(self, query):
-        massage = []
-        massage.append(user_say(query))
-
+    def _run_pipeline(self, query):
+        """QueryParser → TextToSQL → Answer 전체 파이프라인 실행.
+        main.query()와 api_server.answer()가 동일 로직을 중복 구현하지 않도록
+        이 메서드 하나로 통일한다 (dev_docs.md: "모든 쿼리는 main.agent.query()로 받는다")."""
         parse_result = self.agents["QueryParser"].query(query)
         if SHOW_THOUTH_PROCESS:
             print("[QueryParser 결과]", parse_result)
 
         if not parse_result.get("answerable", False):
-            return parse_result.get("content")
+            return {
+                "content": None,
+                "kind": "unanswerable",
+                "early_return": parse_result.get("content"),
+                "parse_result": parse_result,
+                "sql_results": {},
+                "tables": {},
+                "all_filters": [],
+            }
 
         resolved = parse_result.get("resolved", {}) or {}
         table_results = parse_result.get("table_results", {}) or {}
@@ -189,7 +197,15 @@ class Agent:
         all_filters = resolved.get("filters", []) or []
 
         if not tables:
-            return "질의에서 조회할 테이블(카테고리)을 확정하지 못했습니다."
+            return {
+                "content": None,
+                "kind": "no_tables",
+                "early_return": "질의에서 조회할 테이블(카테고리)을 확정하지 못했습니다.",
+                "parse_result": parse_result,
+                "sql_results": {},
+                "tables": tables,
+                "all_filters": all_filters,
+            }
 
         sql_results = {}
         for category, table_name in tables.items():
@@ -210,7 +226,15 @@ class Agent:
 
         failed_tables = [t for t, r in sql_results.items() if r.get("error")]
         if failed_tables and len(failed_tables) == len(sql_results):
-            return f"죄송합니다, 조회 중 오류가 발생했습니다: {sql_results[failed_tables[0]]['error']}"
+            return {
+                "content": None,
+                "kind": "sql_failed",
+                "early_return": f"죄송합니다, 조회 중 오류가 발생했습니다: {sql_results[failed_tables[0]]['error']}",
+                "parse_result": parse_result,
+                "sql_results": sql_results,
+                "tables": tables,
+                "all_filters": all_filters,
+            }
 
         curated = self._curate_sql_results(sql_results)
         answer_result = self.agents["Answer"].query(query, curated)
@@ -226,7 +250,21 @@ class Agent:
                 + ", ".join(skipped)
                 + ". 위 결과는 이 조건이 반영되지 않았을 수 있으니 참고용으로만 확인해 주세요."
             )
-        return content
+
+        return {
+            "content": content,
+            "kind": None,
+            "early_return": None,
+            "parse_result": parse_result,
+            "sql_results": sql_results,
+            "tables": tables,
+            "all_filters": all_filters,
+        }
+
+    def query(self, query):
+        """CLI/단발성 호출용 — 파이프라인 실행 후 최종 답변 문자열만 리턴."""
+        result = self._run_pipeline(query)
+        return result["content"] if result["content"] is not None else result["early_return"]
 
 if __name__ == "__main__":
     # Step 3(qp_task15_ratelimit.md §4) — CLI 경로 예외 방어. 429 백오프가 다 소진되면
