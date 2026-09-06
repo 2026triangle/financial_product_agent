@@ -166,7 +166,7 @@ db/finance_master.db     # 최종 SQLite DB (tb_domestic_bond / tb_domestic_etf 
 | `fund_pub.ttl` | 공모펀드 | `fp:Fund` | `tb_fund` |
 
 네임스페이스는 `@prefix fp: <http://mafest.ai/product#>`(대회 예시 규격 그대로)이며, 각 도메인
-파일은 `owl:imports <./common.ttl>`로 공통 정의를 참조합니다. 전체 2,253 트리플, 클래스 15개,
+파일은 `owl:imports <./common.ttl>`로 공통 정의를 참조합니다. 전체 2,260 트리플, 클래스 15개,
 ObjectProperty 10개, DatatypeProperty 170개, AnnotationProperty 11개로 구성됩니다.
 
 **`fp:BondCategory`(채권분류)는 트리가 아니라 DAG입니다.** 국내채권 3계층 분류(대분류 6종 →
