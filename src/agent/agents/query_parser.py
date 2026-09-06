@@ -41,8 +41,18 @@ task : 주어진 질문을 분석해주세요.
 분석에서는 질문을 "카테고리", "논리 검증", "수치 검증"으로 분리해야 합니다.
 
 define :
-* 카테고리 - 카테고리는 "domestic_bond(국내 채권)", "domestic_etf(국내 etf)", "foreign_etf(해외 etf)", "fund(공모 펀드)" 가 있습니다.
-사용자의 요청은 모두 이 카테고리 안에 금융 상품에 대한 질문이어야 하며 하나 이상의 카테고리와 연관된 복합 질문일 수도 있습니다.
+* 카테고리 - "domestic_bond(국내 채권)", "domestic_etf(국내 ETF)",
+  "foreign_etf(해외 ETF)", "fund(공모 펀드)" 가 있습니다.
+  사용자의 요청은 모두 이 카테고리 안에 금융 상품에 대한 질문이어야 하며 하나 이상의
+  카테고리와 연관된 복합 질문일 수도 있습니다.
+
+  국내 ETF / 해외 ETF 구분 기준:
+  · 아래 브랜드(접두어)가 보이면 domestic_etf 입니다 (한국거래소 상장 ETF 브랜드,
+    DB 실측 상위 빈도순): KODEX, TIGER, RISE, ACE, 메리츠, PLUS, SOL, KIWOOM(키움),
+    신한, 삼성, 한투, KB, HANARO, 미래에셋, 하나, KoAct, TIME(TIMEFOLIO)
+  · 미국 티커(SPY, QQQ, VOO, SCHD, JEPI 등)나 해외 운용사 이름
+    (iShares, Vanguard, SPDR, Invesco, KraneShares 등)이 보이면 foreign_etf 입니다
+  · 판단이 어려우면 두 카테고리를 모두 넣으세요 — 조회 후 없는 쪽은 자연히 걸러집니다
 * 논리 검증 - 논리적으로 질문에 모순이 없는지 판단해야 합니다.
 질문에서 가정하고 있는 사실을 온톨로지 트리플("주어 술어 목적어" 문자열)로 분리하세요.
 반드시 "fp:" 접두사를 쓰세요.
@@ -87,6 +97,21 @@ logical_verification 트리플로 만들지 마세요(예: fp:hasName 같은 속
   "product_name" : ["국민성장펀드"]
 
 부분 이름이어도 그대로 담습니다("KODEX AI로봇" 등).
+
+[중요] product_name 은 "상품 자체의 이름"일 때만 씁니다.
+  · 상품 자체의 이름  → product_name
+    "국민성장펀드 알려줘", "KODEX 200 정보", "TIGER 미국채10년선물"
+  · 상품이 편입한 개별 종목명·기업명 → product_name 이 아닙니다
+    "삼성전자를 편입한 ETF", "캠브리콘이 들어간 펀드", "에코프로 자회사를 담은 상품"
+
+제공된 데이터에는 상품의 구성종목(편입 종목) 정보가 없습니다.
+따라서 "무엇을 편입/포함한 상품"을 묻는 조건은 확인할 수 없으므로
+unsupported_conditions 에 담으세요.
+
+  "unsupported_conditions" : ["캠브리콘 편입 여부(구성종목 정보)"]
+
+이때 질의의 나머지 조건(투자지역·자산군 등)은 정상적으로 추출하세요.
+전체를 포기하지 마세요.
 
 * 수치 검증 - 사용자가 수치적으로 확인하려는 조건을 분리하세요.
 
@@ -168,6 +193,18 @@ example :
     "logical_verification" : [],
     "numerical_verification" : {},
     "product_name" : ["국민성장펀드"]
+}
+
+[query]
+{
+    "query" : "캠브리콘이 편입된 중국 반도체 ETF를 알려줘"
+}
+[answer]
+{
+    "category" : ["domestic_etf", "foreign_etf"],
+    "logical_verification" : ["fp:DomesticETF fp:investsInRegion \\"중국\\"", "fp:ForeignETF fp:investsInRegion \\"중국\\""],
+    "numerical_verification" : {},
+    "unsupported_conditions" : ["캠브리콘 편입 여부(구성종목 정보)", "반도체 테마"]
 }
 
 {{retry_hint}}
