@@ -237,13 +237,13 @@ class Agent:
             }
 
         curated = self._curate_sql_results(sql_results)
-        answer_result = self.agents["Answer"].query(query, curated)
+        skipped = _extract_skipped_conditions(parse_result)
+        answer_result = self.agents["Answer"].query(query, curated, skipped=skipped)
         content = answer_result["content"]
 
         condition_summary = _build_condition_summary(tables, all_filters)
         content += f"\n\n[조회 조건] {condition_summary}"
 
-        skipped = _extract_skipped_conditions(parse_result)
         if skipped:
             content += (
                 "\n\n[참고] 다음 조건은 보유한 데이터로 검증하지 못했습니다: "

@@ -12,6 +12,7 @@ import random
 import re
 
 from agents.agent import Agent
+from agents.column_utils import guess_identity_columns
 
 
 SYSTEM_PROMPT = """당신은 금융 상품 정보를 안내하는 답변 합성 에이전트입니다.
@@ -37,6 +38,9 @@ SYSTEM_PROMPT = """당신은 금융 상품 정보를 안내하는 답변 합성 
    조건의 충족 여부를 판단할 수 없다면 "~을 조회했습니다" 정도로만 중립적으로
    서술하고, 그 조건이 만족되었다고 주장하지 마세요.
 7. 도입 문장은 1~2문장 이내로 간결하게 작성하세요.
+8. 아래 [미검증 조건]이 주어진 경우, 그 조건을 만족하는 상품이라고 단정하지
+   마세요. 대신 검증 가능한 나머지 조건을 기준으로 조회했다는 취지로
+   서술하세요(예: "데이터상 확인 가능한 [조건] 기준 목록입니다").
 """
 
 _MARKDOWN_TABLE_LINE_RE = re.compile(r'^\s*\|.*\|\s*$')
@@ -74,29 +78,52 @@ class AnswerAgent(Agent):
     def _build_data_block(self, curated_results: dict) -> str:
         """실제 데이터는 LLM을 거치지 않고 원본 그대로 텍스트로 렌더링.
         0은 대회 측 공지에 따라 의도된 값이므로 그대로 노출하되,
-        None/빈 문자열처럼 값이 없음을 뜻하는 경우만 생략한다."""
+        None/빈 문자열처럼 값이 없음을 뜻하는 경우만 생략한다.
+        상품코드/상품명 컬럼은 guess_identity_columns로 동적 추정해
+        "[코드] 이름 (나머지 컬럼: 값, ...)" 형태로 포맷팅한다
+        (테이블마다 컬럼명이 달라 하드코딩하지 않는다)."""
         blocks = []
         for table_name, r in curated_results.items():
             if r.get("error") or not r.get("rows"):
                 continue
             cols = r.get("columns", [])
+            id_cols = guess_identity_columns(cols)
+            code_col = id_cols[0] if len(id_cols) >= 1 else None
+            name_col = id_cols[1] if len(id_cols) >= 2 else None
             lines = [f"[{table_name}]"]
             for row in r["rows"]:
                 preview = {
                     k: v for k, v in zip(cols, row)
                     if v is not None and v != ""
                 }
-                lines.append(f"  · {preview}")
+                code_val = preview.pop(code_col, None) if code_col else None
+                name_val = preview.pop(name_col, None) if name_col else None
+                head = f"[{code_val}] " if code_val is not None else ""
+                head += str(name_val) if name_val is not None else ""
+                rest = ", ".join(f"{k}: {v}" for k, v in preview.items())
+                if head and rest:
+                    lines.append(f"  · {head} ({rest})")
+                elif head:
+                    lines.append(f"  · {head}")
+                else:
+                    lines.append(f"  · {preview}")
             blocks.append("\n".join(lines))
         return "\n\n".join(blocks)
 
-    def query(self, original_query: str, curated_results: dict) -> dict:
+    def query(self, original_query: str, curated_results: dict, skipped: list = None) -> dict:
         query_id = str(time.time() + random.random())
 
         summary = self._build_summary(curated_results)
+        caveat_note = ""
+        if skipped:
+            caveat_note = (
+                "\n\n[미검증 조건]\n" + ", ".join(skipped) +
+                "\n위 조건은 보유한 데이터로 검증하지 못했습니다."
+            )
         prompt = (
             f"[사용자 질문]\n{original_query}\n\n"
-            f"[조회 결과 요약]\n{summary}\n\n"
+            f"[조회 결과 요약]\n{summary}"
+            f"{caveat_note}\n\n"
             "위 내용을 바탕으로 도입 문장과 마무리 문장만 작성하세요. "
             "실제 상품 데이터는 언급하지 마세요."
         )
