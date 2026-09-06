@@ -72,7 +72,9 @@ class AnswerAgent(Agent):
         return "\n".join(lines)
 
     def _build_data_block(self, curated_results: dict) -> str:
-        """실제 데이터는 LLM을 거치지 않고 원본 그대로 텍스트로 렌더링"""
+        """실제 데이터는 LLM을 거치지 않고 원본 그대로 텍스트로 렌더링.
+        0은 대회 측 공지에 따라 의도된 값이므로 그대로 노출하되,
+        None/빈 문자열처럼 값이 없음을 뜻하는 경우만 생략한다."""
         blocks = []
         for table_name, r in curated_results.items():
             if r.get("error") or not r.get("rows"):
@@ -80,7 +82,10 @@ class AnswerAgent(Agent):
             cols = r.get("columns", [])
             lines = [f"[{table_name}]"]
             for row in r["rows"]:
-                preview = dict(zip(cols, row))
+                preview = {
+                    k: v for k, v in zip(cols, row)
+                    if v is not None and v != ""
+                }
                 lines.append(f"  · {preview}")
             blocks.append("\n".join(lines))
         return "\n\n".join(blocks)

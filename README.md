@@ -20,13 +20,11 @@ LLM 백엔드는 대회 규정에 따라 CLOVA Studio(HyperCLOVA X, HCX-005) 단
 │   ├── etf_kr.ttl                  # 국내ETF (tb_domestic_etf)
 │   ├── etf_gl.ttl                  # 해외ETF (tb_foreign_etf)
 │   └── fund_pub.ttl                # 공모펀드 (tb_fund)
-├── scripts/ontology/             # TTL/통제어휘 생성 스크립트 ("온톨로지" 절 참고)
 ├── src/
 │   ├── agent/                     # 에이전트 파이프라인 구현체 ("에이전트 구현" 절 참고)
 │   ├── ontology/endpoint/         # 온톨로지 런타임 검증기 (OntologyValidator)
 │   ├── data/                      # 원본/전처리 데이터, DB 적재, SQLite DB ("데이터 파이프라인" 절 참고)
 │   └── endpoint/                  # MCP 서버 관련 모듈
-└── legacy/                       # 원본 배포 자료·과거 설계 문서 (참고용, 구현체 아님)
 ```
 
 ## 설치 및 실행
@@ -157,7 +155,7 @@ db/finance_master.db     # 최종 SQLite DB (tb_domestic_bond / tb_domestic_etf 
 ## 온톨로지 (`ontology/`)
 
 대회 제출 규격에 맞춘 도메인별 Turtle 파일입니다. 이 온톨로지를 실제로 조회하는 런타임 검증기는
-`src/ontology/endpoint/`에, TTL/통제어휘 생성 스크립트는 `scripts/ontology/`에 있습니다.
+`src/ontology/endpoint/`에 있습니다.
 
 | 파일 | 도메인 | 클래스 | 소스 테이블 |
 |---|---|---|---|
@@ -170,15 +168,6 @@ db/finance_master.db     # 최종 SQLite DB (tb_domestic_bond / tb_domestic_etf 
 네임스페이스는 `@prefix fp: <http://mafest.ai/product#>`(대회 예시 규격 그대로)이며, 각 도메인
 파일은 `owl:imports <./common.ttl>`로 공통 정의를 참조합니다. 전체 2,253 트리플, 클래스 15개,
 ObjectProperty 10개, DatatypeProperty 170개, AnnotationProperty 11개로 구성됩니다.
-
-**`bond_kr.ttl`/`etf_kr.ttl`/`etf_gl.ttl`/`fund_pub.ttl`은 자동 생성 파일입니다.** 손으로 직접
-편집하지 마세요 — `scripts/ontology/build_ttl_from_meta.py`가 `scripts/ontology/meta_columns/*.json`의
-203개 컬럼 메타데이터를 기계적으로 `owl:DatatypeProperty`로 변환해 매번 이 4개 파일을 통째로
-덮어씁니다.
-
-```bash
-python3 scripts/ontology/build_ttl_from_meta.py
-```
 
 **`fp:BondCategory`(채권분류)는 트리가 아니라 DAG입니다.** 국내채권 3계층 분류(대분류 6종 →
 중분류 16종 → 소분류 39종, 총 61개 인스턴스)를 실제 데이터에서 추출해보니 다부모 노드가 13개
