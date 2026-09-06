@@ -17,6 +17,32 @@ from agents.text_to_sql_agent import TextToSQLAgent
 from core.tool_manager import get_tool_manager
 from tools.meta_search_tool import register_meta_search_tool
 
+_CATEGORY_KOREAN = {
+    "tb_domestic_bond": "국내채권",
+    "tb_domestic_etf": "국내ETF",
+    "tb_foreign_etf": "해외ETF",
+    "tb_fund": "공모펀드",
+}
+
+def _build_condition_summary(tables: dict, all_filters: list) -> str:
+    """실제 적용된 조회 조건을 LLM 없이 코드로 그대로 요약한다.
+    AnswerAgent가 조건을 스스로 서술하다 지어내는 문제(카테고리 오기재,
+    존재하지 않는 회사명/날짜 등)를 막기 위해 조건 설명 자체를
+    결정론적으로 생성한다."""
+    parts = []
+    for category, table_name in tables.items():
+        table_filters = _filters_for_table(all_filters, table_name)
+        label = _CATEGORY_KOREAN.get(table_name, table_name)
+        if table_filters:
+            cond_desc = ", ".join(
+                f"{f.get('concept') or f.get('column')}={f.get('values')}"
+                for f in table_filters
+            )
+            parts.append(f"{label}({cond_desc})")
+        else:
+            parts.append(f"{label}(추가 조건 없음)")
+    return ", ".join(parts)
+
 
 SHOW_THOUTH_PROCESS = True
 _SKIPPED_PROPERTY_RE = re.compile(r"온톨로지가 모르는 속성이라 검증에서 제외:\s*(.+)")
@@ -190,6 +216,10 @@ class Agent:
         curated = self._curate_sql_results(sql_results)
         answer_result = self.agents["Answer"].query(query, curated)
         content = answer_result["content"]
+
+        condition_summary = _build_condition_summary(tables, all_filters)
+        content += f"\n\n[조회 조건] {condition_summary}"
+
         skipped = _extract_skipped_conditions(parse_result.get("think_trace") or [])
         if skipped:
             content += (

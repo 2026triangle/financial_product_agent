@@ -8,11 +8,9 @@ from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
 
 
-from main import Agent
-from main import _extract_skipped_conditions
+from main import Agent, _filters_for_table, _build_condition_summary, _extract_skipped_conditions
 
 logger = logging.getLogger("agent.api_server")
-
 app = FastAPI()
 
 # 무거운 초기화(BGE-M3, 온톨로지, DB 연결 등)는 서버 기동 시 딱 한 번만
@@ -48,8 +46,12 @@ def _build_think_trace_summary(parse_result: dict, sql_results: dict) -> str:
             steps.append(f"[{table_name}] SQL 실행: {r['sql']} → {r.get('row_count', 0)}건")
         elif r.get("error"):
             steps.append(f"[{table_name}] SQL 실행 실패: {r['error']}")
-    return " → ".join(steps) if steps else "추가 추론 없음"
 
+    skipped = _extract_skipped_conditions(parse_result.get("think_trace") or [])
+    if skipped:
+        steps.append(f"[검증 요약] 다음 조건은 데이터 미비로 검증하지 못함: {', '.join(skipped)}")
+
+    return " → ".join(steps) if steps else "추가 추론 없음"
 
 @app.get("/answer")
 def answer(question_id: str = Query(...), question: str = Query(...)):
@@ -79,7 +81,6 @@ def answer(question_id: str = Query(...), question: str = Query(...)):
                 "answer": "확인할 수 없습니다. 조회할 상품 카테고리를 특정하지 못했습니다.",
             })
 
-        from main import _filters_for_table
         sql_results = {}
         for category, table_name in tables.items():
             table_filters = _filters_for_table(all_filters, table_name)
@@ -95,13 +96,9 @@ def answer(question_id: str = Query(...), question: str = Query(...)):
         curated = _agent._curate_sql_results(sql_results)
         answer_result = _agent.agents["Answer"].query(question, curated)
         final_text = answer_result["content"]
-        skipped = _extract_skipped_conditions(parse_result.get("think_trace") or [])
-        if skipped:
-            final_text += (
-                "\n\n[참고] 다음 조건은 보유한 데이터로 검증하지 못했습니다: "
-                + ", ".join(skipped)
-                + ". 위 결과는 이 조건이 반영되지 않았을 수 있으니 참고용으로만 확인해 주세요."
-            )
+
+        condition_summary = _build_condition_summary(tables, all_filters)
+        final_text += f"\n\n[조회 조건] {condition_summary}"
 
         return JSONResponse({
             "question_id": question_id,
