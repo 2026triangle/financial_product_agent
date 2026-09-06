@@ -23,7 +23,18 @@ _FORBIDDEN_RE = re.compile(
     r"\b(INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|REPLACE|ATTACH|DETACH|PRAGMA|VACUUM|REINDEX)\b",
     re.IGNORECASE,
 )
+
 _MULTI_STATEMENT_RE = re.compile(r";\s*\S")
+_COMMENT_RE = re.compile(r"--|/\*")
+_TABLE_REF_RE = re.compile(r"\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)", re.IGNORECASE)
+
+ALLOWED_TABLES = {
+    "tb_domestic_bond",
+    "tb_domestic_etf",
+    "tb_foreign_etf",
+    "tb_fund",
+    "tb_fund_attribute",
+}
 
 
 class SQLGuardError(Exception):
@@ -39,6 +50,16 @@ def _validate_sql(sql: str) -> str:
         raise SQLGuardError("데이터 변경/스키마 조작 키워드가 포함되어 실행이 거부되었습니다.")
     if _MULTI_STATEMENT_RE.search(sql):
         raise SQLGuardError("한 번에 하나의 SELECT 문만 실행할 수 있습니다.")
+
+    if _COMMENT_RE.search(sql):
+        raise SQLGuardError("SQL 주석(--, /* */)은 허용되지 않습니다.")
+
+    referenced_tables = {m.group(1).lower() for m in _TABLE_REF_RE.finditer(sql)}
+    if not referenced_tables:
+        raise SQLGuardError("조회 대상 테이블을 확인할 수 없습니다.")
+    disallowed = referenced_tables - ALLOWED_TABLES
+    if disallowed:
+        raise SQLGuardError(f"허용되지 않은 테이블 참조: {', '.join(disallowed)}")
 
     if not re.search(r"\bLIMIT\s+\d+", sql, re.IGNORECASE):
         sql = f"{sql} LIMIT {MAX_ROWS}"
@@ -113,3 +134,6 @@ if __name__ == "__main__":
     print(execute_sql_query("DELETE FROM tb_domestic_bond"))
     print(execute_sql_query("SELECT * FROM tb_domestic_bond; DROP TABLE tb_domestic_bond;"))
     print(execute_sql_query("SELECT pd_no FROM tb_domestic_bond"))
+    print(execute_sql_query("SELECT * FROM tb_domestic_bond -- DROP TABLE tb_domestic_bond"))
+    print(execute_sql_query("SELECT * FROM sqlite_master"))
+    print(execute_sql_query("SELECT a.pd_no FROM tb_domestic_bond a JOIN tb_fund_attribute b ON a.pd_no=b.itm_no LIMIT 5"))

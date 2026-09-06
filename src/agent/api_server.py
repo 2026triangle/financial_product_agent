@@ -7,7 +7,9 @@ import logging
 from fastapi import FastAPI, Query
 from fastapi.responses import JSONResponse
 
+
 from main import Agent
+from main import _extract_skipped_conditions
 
 logger = logging.getLogger("agent.api_server")
 
@@ -93,6 +95,13 @@ def answer(question_id: str = Query(...), question: str = Query(...)):
         curated = _agent._curate_sql_results(sql_results)
         answer_result = _agent.agents["Answer"].query(question, curated)
         final_text = answer_result["content"]
+        skipped = _extract_skipped_conditions(parse_result.get("think_trace") or [])
+        if skipped:
+            final_text += (
+                "\n\n[참고] 다음 조건은 보유한 데이터로 검증하지 못했습니다: "
+                + ", ".join(skipped)
+                + ". 위 결과는 이 조건이 반영되지 않았을 수 있으니 참고용으로만 확인해 주세요."
+            )
 
         return JSONResponse({
             "question_id": question_id,

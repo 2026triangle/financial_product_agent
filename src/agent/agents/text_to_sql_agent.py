@@ -51,10 +51,16 @@ PROMPT_TEMPLATE = '''
   "ETF", "펀드", "주식형" 같은 단어가 섞여 있는 경우, 또는 대상이 ETF 테이블인데
   "신용등급", "AAA" 같은 채권 전용 단어가 섞여 있는 경우)는 이 테이블과 무관하니
   절대로 조건에 반영하지 말고 완전히 무시하세요.
+- 상품명/종목명(펀드명, ETF명, 브랜드명 등 고유명사)에 대한 조건은 반드시
+  [이미 확정된 조건]에 이미 명시되어 있을 때만 반영하세요. 확정된 조건에
+  상품명 조건이 없다면, 질의문에 상품명처럼 보이는 단어가 있어도 절대로
+  스스로 등호(=)나 LIKE 조건을 만들어 추가하지 마세요. 상품명 매칭은 이
+  프롬프트 밖의 별도 검증 로직에서만 처리합니다.
 - [이미 확정된 조건]에 없는 새 조건을 스스로 추가하고 싶다면, 그 조건이
   명백히 [대상 테이블]의 상품 자체 특성(다른 카테고리 언급이 전혀 섞이지 않은
   표현)에 대한 것일 때만, 그리고 후보 컬럼의 설명/샘플값으로 근거가 확실할
-  때만 추가하세요. 조금이라도 애매하면 추가하지 말고 확정된 조건만 사용하세요.
+  때만 추가하세요(단, 위 상품명 조건은 예외 없이 적용됩니다). 조금이라도
+  애매하면 추가하지 말고 확정된 조건만 사용하세요.
 - 존재하지 않는 컬럼명을 사용하지 마세요.
 - LIMIT은 넣지 않아도 됩니다 (실행 시 자동으로 붙습니다).
 '''
@@ -305,6 +311,21 @@ def _extract_sql(text: str):
         sql = sql.split(";")[0]
     return sql.strip()
 
+def _violates_name_filter_policy(sql: str, table: str, clauses: list) -> bool:
+    """[이미 확정된 조건](clauses)에 없는 상품명 컬럼 조건을 LLM이 스스로 추가했는지
+    검사한다. 프롬프트 지침만으로는 HCX-005가 이를 무시하는 사례가 확인되어
+    (2026-09-06, KODEX AI로봇 ETF 재현) 코드 레벨 가드를 추가한다."""
+    name_cols = PRODUCT_NAME_COLUMNS.get(table) or ()
+    if not name_cols:
+        return False
+    confirmed_text = " ".join(clauses)
+    for col in name_cols:
+        if col in confirmed_text:
+            continue  # 이미 확정된 조건에 포함된 컬럼이면 정상
+        pattern = re.compile(rf"\b{re.escape(col)}\s*(=|LIKE)", re.IGNORECASE)
+        if pattern.search(sql):
+            return True
+    return False
 
 class TextToSQLAgent(Agent):
     def __init__(self, mm):
@@ -338,6 +359,17 @@ class TextToSQLAgent(Agent):
             if not sql:
                 last_error = "응답에서 SELECT 문을 추출하지 못했습니다."
                 logger.warning(f"[{table}] SQL 추출 실패 ({attempt}/{MAX_SQL_RETRIES}) | raw={content!r}")
+                continue
+
+            if _violates_name_filter_policy(sql, table, clauses):
+                last_error = (
+                    "확정되지 않은 상품명 조건을 임의로 추가했습니다. "
+                    "상품명 관련 조건 없이 다시 작성하세요."
+                )
+                logger.warning(
+                    f"[{table}] 상품명 조건 무단 추가 감지, 재시도 "
+                    f"({attempt}/{MAX_SQL_RETRIES}) | sql={sql!r}"
+                )
                 continue
 
             exec_result = execute_sql_query(sql)
