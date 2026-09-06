@@ -232,7 +232,7 @@ fp:AssetClass_Currency a fp:AssetClass ; rdfs:label "통화"@ko ;
     fp:valueCode "tb_domestic_etf:통화" ; fp:hasSynonym "환율", "달러선물" ;
     fp:notAvailableIn "tb_foreign_etf", "tb_fund" .
 fp:AssetClass_RealEstate a fp:AssetClass ; rdfs:label "부동산"@ko ;
-    fp:valueCode "tb_domestic_etf:부동산", "tb_fund:임대형" ; fp:hasSynonym "리츠", "REITs", "리츠형" .
+    fp:valueCode "tb_domestic_etf:부동산", "tb_fund:임대형", "tb_fund:개발형" ; fp:hasSynonym "리츠", "REITs", "리츠형", "개발형" .
 fp:AssetClass_Alternatives a fp:AssetClass ; rdfs:label "대안투자"@ko ;
     fp:valueCode "tb_foreign_etf:Alternatives", "tb_fund:특별자산" ;
     fp:hasSynonym "Alternatives", "대체투자", "특별자산" ;
@@ -241,6 +241,8 @@ fp:AssetClass_FundOfFunds a fp:AssetClass ; rdfs:label "재간접"@ko ;
     fp:valueCode "tb_fund:재간접" ; fp:hasSynonym "펀드오브펀즈", "FoF" ;
     fp:notAvailableIn "tb_domestic_etf", "tb_foreign_etf" .
 fp:AssetClass_Loan a fp:AssetClass ; rdfs:label "대출형"@ko ; fp:valueCode "tb_fund:대출형" .
+fp:AssetClass_Derivatives a fp:AssetClass ; rdfs:label "파생상품"@ko ;
+    fp:valueCode "tb_fund:파생상품" ; fp:hasSynonym "파생상품형", "파생" .
 fp:AssetClass_Other a fp:AssetClass ; rdfs:label "기타"@ko ; fp:valueCode "tb_domestic_etf:기타" .
 
 # =============================================================================
