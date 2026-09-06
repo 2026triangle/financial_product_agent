@@ -209,3 +209,40 @@ for f in ['common.ttl','bond_kr.ttl','etf_kr.ttl','etf_gl.ttl','fund_pub.ttl']:
 print(len(g), 'triples loaded OK')
 "
 ```
+
+## API 엔드포인트
+
+평가용 엔드포인트는 다음과 같다.
+
+```
+GET http://49.50.141.66/answer
+```
+
+### 요청 파라미터 (query string)
+
+| 파라미터 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `question_id` | string | O | 질의 식별자 (응답에 그대로 반영
+됨) |
+| `question` | string | O | 사용자 질의 원문 |
+
+### 응답 (JSON)
+
+| 필드 | 설명 |
+|---|---|
+| `question_id` | 요청받은 질의 식별자 |
+| `question` | 요청받은 질의 원문 |
+| `retrieved_context` | 답변 근거로 참조한 테이블·건수 요약 |
+| `think_trace` | 사고·추론·도구 사용 과정 |
+| `answer` | 최종 생성 답변 |
+
+### 호출 예시
+
+```bash
+curl -G "http://49.50.141.66/answer" \
+  --data-urlencode "question_id=Q-001" \
+  --data-urlencode "question=현재 판매 가능한 원화채권 중 AA-
+이상 종목 알려줘"
+```
+
+서버 구현은 `src/agent/api_server.py`를 참고할 것.
