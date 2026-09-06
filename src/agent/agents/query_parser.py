@@ -131,6 +131,10 @@ unsupported_conditions 에 담으세요.
   비교어가 전혀 없이 등급 하나만 말한 경우("신용등급 AAA인", "5등급인")에만
   logical_verification 트리플로 표현하세요.
 
+  "이상", "이하", "초과", "미만", "넘는", "보다 높은/낮은" 이라는 말이 등급과 함께
+  나오면 예외 없이 numerical_verification 입니다. 아래 example 중 비교어가 없는
+  것과 혼동하지 마세요.
+
 배경 지식 :
 기본적으로 질문자는 한국인이며 한국에 세금을 납부합니다.
 따라서 "국내"는 한국을 지칭합니다.
@@ -138,16 +142,13 @@ unsupported_conditions 에 담으세요.
 example :
 [query]
 {
-    "query" : "현재 판매 가능한 원화채권 중 AAAA 이상이면서 수익률 상위 10% 알려줘"
+    "query" : "신용등급 AAAA인 원화채권 알려줘"
 }
 [answer]
 {
     "category" : ["domestic_bond"],
-    "logical_verification" : ["fp:Bond fp:isSellable \\"true\\"", "fp:Bond fp:hasCreditRating \\"AAAA\\""],
-    "numerical_verification" :
-    {
-        "rate_of_return" : ">10%"
-    }
+    "logical_verification" : ["fp:Bond fp:hasCreditRating \\"AAAA\\""],
+    "numerical_verification" : {}
 }
 
 [query]
@@ -975,6 +976,37 @@ class QueryParser(Agent):
                         "category": None, "table": None,
                     })
                     break
+
+        # 6.5) 버그 H(qp_task19_regression.md §2) — 미지원 조건만 있고 유효 필터가
+        # 0개면 컷한다. Task 12 가드(5.5, 위)는 tables가 빌 때만 컷하는데, "에코프로의
+        # 자회사를 편입한 ETF" 같은 질의는 tables는 차 있고(category는 잡힘) filters만
+        # 0개라 그 가드에 안 걸려 무필터 전체조회(SELECT * FROM ... 200건)로 샜다
+        # (§0 실측: 37초 소요 + 무관한 결과를 확정 답변으로 제시, 뒤이어 429까지 유발).
+        #
+        # Task 12 가드 바로 옆(5.5)이 아니라 여기(6단계 부등호 전개 *이후*)에 두는
+        # 이유 — "filters 0개"는 이 시점에 확정해야 정확하다. 5.5에서 검사하면
+        # unsupported_conditions와 numerical_verification 부등호만 있고
+        # logical_verification 트리플이 없는 질의(예: "반도체 테마이면서 AA- 이상인
+        # 채권")가 아직 부등호 전개(6단계) 전이라 filters=[]로 보여서 잘못 컷된다 —
+        # 6단계가 끝난 뒤에 봐야 그 필터가 반영된 진짜 상태를 본다.
+        #
+        # unsupported가 있을 때만 적용한다 — 조건 없는 정상 목록 조회("국내ETF
+        # 알려줘": unsupported 없음, filters도 0개)까지 막으면 안 된다(§2 표).
+        if unsupported and not filters:
+            reason = "질문의 조건을 제공된 데이터로 확인할 수 없습니다."
+            suggestion = (f"{', '.join(unsupported)} 정보는 제공된 데이터에 포함되어 있지 않아 "
+                          f"확인이 어렵습니다. 다른 조건(투자지역·자산군·위험등급 등)으로 "
+                          f"질문해 주시겠어요?")
+            think_trace.append("유효한 조회 조건이 없어 답변 불가로 판정 "
+                                f"(미지원 조건만 존재: {unsupported})")
+            return {
+                "content": f"{reason} {suggestion}",
+                "id": call_id,
+                "answerable": False,
+                "reason": reason,
+                "suggestion": suggestion,
+                "think_trace": think_trace,
+            }
 
         # 7) meta_search 안전장치 (qp_spec.md §6) — meta_schema_table이 비어 있으면
         # search_finance_metadata를 호출하지 않는다 (BGE-M3 다운로드/무의미한 빈 검색 방지).
